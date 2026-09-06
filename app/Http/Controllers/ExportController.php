@@ -6,14 +6,37 @@ use App\Exports\AlumniExport;
 use App\Exports\DashboardSummaryExport;
 use App\Exports\TracerResponsesExport;
 use App\Models\Alumni;
+use App\Models\Faculty;
+use App\Models\StudyProgram;
 use App\Services\DashboardService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ExportController extends Controller
 {
+    /**
+     * Lets the admin pick a graduation-year range (and, for university-wide
+     * roles, a faculty/prodi) before downloading — an unfiltered export of a
+     * university with thousands of alumni is both slow and, even after
+     * chunked reading, memory-heavy (see raiseLimitsForLargeExport()).
+     */
+    public function tracerForm(Request $request): View
+    {
+        Gate::authorize('export-data');
+
+        $user = $request->user();
+        $isUniversityScoped = $user->hasAnyRole(['Super Admin', 'Admin Universitas', 'Pimpinan Universitas']);
+
+        return view('exports.tracer', [
+            'years' => Alumni::query()->visibleTo($user)->distinct()->orderBy('graduation_year')->pluck('graduation_year')->filter()->values(),
+            'faculties' => $isUniversityScoped ? Faculty::orderBy('name')->get() : collect(),
+            'programStudies' => $isUniversityScoped ? StudyProgram::orderBy('name')->get() : collect(),
+        ]);
+    }
+
     public function tracer(Request $request): BinaryFileResponse
     {
         Gate::authorize('export-data');
@@ -76,8 +99,12 @@ class ExportController extends Controller
             $query->where('program_study_id', $request->integer('program_study_id'));
         }
 
-        if ($request->filled('graduation_year')) {
-            $query->where('graduation_year', $request->integer('graduation_year'));
+        if ($request->filled('graduation_year_from')) {
+            $query->where('graduation_year', '>=', $request->integer('graduation_year_from'));
+        }
+
+        if ($request->filled('graduation_year_to')) {
+            $query->where('graduation_year', '<=', $request->integer('graduation_year_to'));
         }
 
         return $query;

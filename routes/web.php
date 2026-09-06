@@ -73,6 +73,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/reports/{report}/download', [ReportController::class, 'download'])->name('reports.download');
     Route::delete('/reports/{report}', [ReportController::class, 'destroy'])->name('reports.destroy');
 
+    Route::get('/export/tracer/form', [ExportController::class, 'tracerForm'])->name('export.tracer.form');
     Route::get('/export/tracer', [ExportController::class, 'tracer'])->name('export.tracer');
     Route::get('/export/alumni', [ExportController::class, 'alumni'])->name('export.alumni');
     Route::get('/export/dashboard', [ExportController::class, 'dashboard'])->name('export.dashboard');
