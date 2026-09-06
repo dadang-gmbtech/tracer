@@ -26,6 +26,25 @@
         'borderColor' => $palette[$i % count($palette)],
         'tension' => 0.3,
     ])->values()->all());
+
+    $facultyComparisonConfig = null;
+    if ($facultyComparison) {
+        $fcYears = $facultyComparison['years'];
+        $fcLabels = array_map(fn ($y) => (string) $y, $fcYears);
+        $facultyComparisonConfig = [
+            'type' => 'line',
+            'data' => [
+                'labels' => $fcLabels,
+                'datasets' => collect($facultyComparison['series'])->map(fn ($byYear, $name) => [
+                    'label' => $name,
+                    'data' => array_map(fn ($y) => $byYear[$y], $fcYears),
+                    'borderColor' => $palette[array_search($name, array_keys($facultyComparison['series'])) % count($palette)],
+                    'tension' => 0.3,
+                ])->values()->all(),
+            ],
+            'options' => ['responsive' => true, 'maintainAspectRatio' => false],
+        ];
+    }
 @endphp
 
 <x-app-layout>
@@ -37,26 +56,40 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
 
             @if ($faculties->isNotEmpty())
-                <form method="GET" class="bg-white shadow-sm rounded-lg p-4 flex flex-wrap gap-4 items-end">
+                <form method="GET" class="bg-white shadow-sm rounded-lg p-4 space-y-4">
+                    <div class="flex flex-wrap gap-4 items-end">
+                        <div>
+                            <x-input-label for="faculty_id" value="Fakultas" />
+                            <select id="faculty_id" name="faculty_id" class="mt-1 rounded-md border-gray-300 text-sm">
+                                <option value="">Semua Fakultas</option>
+                                @foreach ($faculties as $faculty)
+                                    <option value="{{ $faculty->id }}" @selected(request('faculty_id') == $faculty->id)>{{ $faculty->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <x-input-label for="program_study_id" value="Program Studi" />
+                            <select id="program_study_id" name="program_study_id" class="mt-1 rounded-md border-gray-300 text-sm">
+                                <option value="">Semua Program Studi</option>
+                                @foreach ($programStudies as $ps)
+                                    <option value="{{ $ps->id }}" @selected(request('program_study_id') == $ps->id)>{{ $ps->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <x-primary-button>Filter</x-primary-button>
+                    </div>
                     <div>
-                        <x-input-label for="faculty_id" value="Fakultas" />
-                        <select id="faculty_id" name="faculty_id" class="mt-1 rounded-md border-gray-300 text-sm">
-                            <option value="">Semua Fakultas</option>
+                        <x-input-label value="Bandingkan Fakultas (grafik Indeks per Pertanyaan/Fakultas per Tahun)" />
+                        <div class="mt-1 flex flex-wrap gap-3">
                             @foreach ($faculties as $faculty)
-                                <option value="{{ $faculty->id }}" @selected(request('faculty_id') == $faculty->id)>{{ $faculty->name }}</option>
+                                <label class="flex items-center gap-1 text-sm">
+                                    <input type="checkbox" name="compare_faculty_ids[]" value="{{ $faculty->id }}"
+                                           @checked(in_array($faculty->id, $selectedFacultyIds)) class="rounded">
+                                    {{ $faculty->name }}
+                                </label>
                             @endforeach
-                        </select>
+                        </div>
                     </div>
-                    <div>
-                        <x-input-label for="program_study_id" value="Program Studi" />
-                        <select id="program_study_id" name="program_study_id" class="mt-1 rounded-md border-gray-300 text-sm">
-                            <option value="">Semua Program Studi</option>
-                            @foreach ($programStudies as $ps)
-                                <option value="{{ $ps->id }}" @selected(request('program_study_id') == $ps->id)>{{ $ps->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <x-primary-button>Filter</x-primary-button>
                 </form>
             @endif
 
@@ -86,7 +119,11 @@
                     <x-chart-card title="Indeks Kepuasan per Tahun" :config="$indeksTrenConfig" />
                 </div>
 
-                <x-chart-card title="Indeks per Pertanyaan per Tahun" :config="$perPertanyaanConfig" height="360px" />
+                @if ($facultyComparisonConfig)
+                    <x-chart-card title="Perbandingan Indeks Keseluruhan Antar Fakultas per Tahun" :config="$facultyComparisonConfig" height="360px" />
+                @else
+                    <x-chart-card title="Indeks per Pertanyaan per Tahun" :config="$perPertanyaanConfig" height="360px" />
+                @endif
 
                 <div class="bg-white shadow-sm rounded-lg p-6">
                     <div class="flex items-center justify-between mb-4 flex-wrap gap-4">
@@ -94,6 +131,9 @@
                         <form method="GET" class="flex gap-2 items-center text-sm">
                             @if (request('faculty_id')) <input type="hidden" name="faculty_id" value="{{ request('faculty_id') }}"> @endif
                             @if (request('program_study_id')) <input type="hidden" name="program_study_id" value="{{ request('program_study_id') }}"> @endif
+                            @foreach ($selectedFacultyIds as $fid)
+                                <input type="hidden" name="compare_faculty_ids[]" value="{{ $fid }}">
+                            @endforeach
                             <label for="recap_year">Tahun</label>
                             <select id="recap_year" name="recap_year" onchange="this.form.submit()" class="rounded-md border-gray-300 text-sm">
                                 @foreach ($years as $y)

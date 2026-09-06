@@ -139,6 +139,46 @@ class EmployerDashboardTest extends TestCase
         $this->assertSame(1, $recap['total']['jumlah_respon']);
     }
 
+    public function test_faculty_comparison_returns_one_series_per_selected_faculty(): void
+    {
+        $facultyA = Faculty::factory()->create(['name' => 'Fakultas A']);
+        $facultyB = Faculty::factory()->create(['name' => 'Fakultas B']);
+        $alumniA = Alumni::factory()->create(['faculty_id' => $facultyA->id, 'graduation_year' => 2024]);
+        $alumniB = Alumni::factory()->create(['faculty_id' => $facultyB->id, 'graduation_year' => 2024]);
+        // Sangat Baik on every question -> 100% index.
+        EmployerResponse::factory()->create(['alumni_id' => $alumniA->id]);
+        // Kurang on every question -> 0% index.
+        EmployerResponse::factory()->create([
+            'alumni_id' => $alumniB->id,
+            'q1_kerja_sama_tim' => 4, 'q2_pengembangan_diri' => 4, 'q3_komunikasi' => 4,
+            'q4_teknologi_informasi' => 4, 'q5_bahasa_asing' => 4, 'q6_keahlian' => 4, 'q7_integritas' => 4,
+        ]);
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+
+        $comparison = app(EmployerDashboardService::class)->indeksPerFacultyPerYear($admin, [$facultyA->id, $facultyB->id]);
+
+        $this->assertSame(100.0, $comparison['series']['Fakultas A'][2024]);
+        $this->assertSame(0.0, $comparison['series']['Fakultas B'][2024]);
+    }
+
+    public function test_checking_faculties_switches_the_dashboard_to_the_comparison_chart(): void
+    {
+        $facultyA = Faculty::factory()->create(['name' => 'Fakultas A']);
+        $alumniA = Alumni::factory()->create(['faculty_id' => $facultyA->id, 'graduation_year' => 2024]);
+        EmployerResponse::factory()->create(['alumni_id' => $alumniA->id]);
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+
+        $this->actingAs($admin)
+            ->get(route('employer.dashboard', ['compare_faculty_ids' => [$facultyA->id]]))
+            ->assertOk()
+            ->assertSee('Perbandingan Indeks Keseluruhan Antar Fakultas per Tahun')
+            ->assertDontSee('Indeks per Pertanyaan per Tahun');
+    }
+
     public function test_alumni_is_redirected_away_from_the_employer_dashboard(): void
     {
         $alumni = Alumni::factory()->create();

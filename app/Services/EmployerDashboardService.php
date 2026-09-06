@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\EmployerResponse;
+use App\Models\Faculty;
 use App\Models\User;
 use Illuminate\Support\Collection;
 
@@ -70,6 +71,37 @@ class EmployerDashboardService
             'rows' => $rows,
             'total' => $this->aggregateFor($responses),
         ];
+    }
+
+    /**
+     * Overall satisfaction index (average across all 7 questions) per
+     * selected faculty per year — used to overlay one line per faculty on
+     * the "Indeks per Pertanyaan per Tahun" chart so faculties can be
+     * compared directly, in place of its default per-question breakdown.
+     *
+     * @param  list<int>  $facultyIds
+     * @param  array{faculty_id?: int, program_study_id?: int}  $filters
+     */
+    public function indeksPerFacultyPerYear(User $user, array $facultyIds, array $filters = []): array
+    {
+        $responses = $this->scopedResponses($user, $filters)->get();
+        $years = $this->yearRange($responses);
+
+        $series = [];
+
+        foreach ($facultyIds as $facultyId) {
+            $facultyResponses = $responses->filter(fn (EmployerResponse $r) => $r->alumni->faculty_id === $facultyId);
+            $name = $facultyResponses->first()?->alumni?->faculty?->name ?? Faculty::find($facultyId)?->name ?? '-';
+
+            $series[$name] = [];
+
+            foreach ($years as $year) {
+                $yearResponses = $facultyResponses->filter(fn (EmployerResponse $r) => (int) $r->alumni->graduation_year === $year);
+                $series[$name][$year] = $this->aggregateFor($yearResponses)['indeks_keseluruhan'];
+            }
+        }
+
+        return ['years' => $years, 'series' => $series];
     }
 
     /**

@@ -35,10 +35,14 @@ class EmployerDashboardController extends Controller
         $years = $summary['years'];
         $recapYear = (int) ($request->integer('recap_year') ?: (count($years) ? end($years) : now()->year));
 
+        $compareFacultyIds = array_values(array_filter(array_map('intval', (array) $request->input('compare_faculty_ids', []))));
+
         return view('employer.dashboard', [
             'summary' => $summary,
             'facultyRecap' => $this->dashboard->facultyRecap($user, $recapYear, $filters),
             'recapYear' => $recapYear,
+            'facultyComparison' => $compareFacultyIds ? $this->dashboard->indeksPerFacultyPerYear($user, $compareFacultyIds, $filters) : null,
+            'selectedFacultyIds' => $compareFacultyIds,
             'faculties' => $isUniversityScoped ? Faculty::orderBy('name')->get() : collect(),
             'programStudies' => $isUniversityScoped ? StudyProgram::orderBy('name')->get() : collect(),
         ]);
