@@ -24,6 +24,7 @@ class DashboardController extends Controller
         $filters = array_filter([
             'faculty_id' => $request->integer('faculty_id') ?: null,
             'program_study_id' => $request->integer('program_study_id') ?: null,
+            'jenjang' => $request->string('jenjang')->trim()->value() ?: null,
         ]);
 
         $summary = $this->dashboard->summary($user, $filters);

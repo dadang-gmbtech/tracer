@@ -10,17 +10,24 @@ use Illuminate\Support\Collection;
 
 class DashboardService
 {
+    /**
+     * IKU-2 only covers D1/D2/D3/D4-Sarjana Terapan/S1 graduates (see
+     * Rumus IKU.pdf) — S2/S3 alumni are excluded from every IKU percentage
+     * and bobot figure, regardless of which jenjang filter is applied.
+     */
+    private const IKU_ELIGIBLE_LEVELS = ['D3', 'S1'];
+
     public function __construct(private readonly IkuCalculatorService $iku) {}
 
     /**
      * Role-scoped, per-graduation-year aggregation used by the main dashboard
      * charts (see Desain Sistem Tracer Studi.pdf, "Dashboard utama").
      *
-     * @param  array{faculty_id?: int, program_study_id?: int}  $filters
+     * @param  array{faculty_id?: int, program_study_id?: int, jenjang?: string}  $filters
      */
     public function summary(User $user, array $filters = []): array
     {
-        $alumni = $this->scopedAlumni($user, $filters)->with('tracerResponse')->get();
+        $alumni = $this->scopedAlumni($user, $filters)->with(['tracerResponse', 'studyProgram'])->get();
         $years = $this->yearRange($alumni);
         $umpByProvinceYear = $this->umpLookup();
 
@@ -36,13 +43,13 @@ class DashboardService
      * Per-faculty recap for a single graduation year (rekap tracer berdasarkan
      * fakultas on the dashboard), plus a university/scope-wide total row.
      *
-     * @param  array{faculty_id?: int, program_study_id?: int}  $filters
+     * @param  array{faculty_id?: int, program_study_id?: int, jenjang?: string}  $filters
      */
     public function facultyRecap(User $user, int $year, array $filters = []): array
     {
         $alumni = $this->scopedAlumni($user, $filters)
             ->where('graduation_year', $year)
-            ->with(['tracerResponse', 'faculty'])
+            ->with(['tracerResponse', 'faculty', 'studyProgram'])
             ->get();
 
         $umpLookup = $this->umpLookup();
@@ -76,7 +83,11 @@ class DashboardService
         $wiraswasta = $responses->filter(fn (TracerResponse $r) => (int) $r->f8 === TracerResponse::STATUS_WIRASWASTA);
         $melanjutkan = $responses->filter(fn (TracerResponse $r) => (int) $r->f8 === TracerResponse::STATUS_MELANJUTKAN_STUDI);
 
-        $bobotTotal = $responses->sum(function (TracerResponse $r) use ($umpLookup, $year) {
+        // IKU is scoped to D3/S1 alumni only, independent of any jenjang filter applied above.
+        $ikuCohort = $cohort->filter(fn (Alumni $a) => in_array($a->studyProgram?->level, self::IKU_ELIGIBLE_LEVELS, true));
+        $ikuResponses = $ikuCohort->filter(fn (Alumni $a) => $a->tracerResponse !== null)->map(fn (Alumni $a) => $a->tracerResponse);
+
+        $bobotTotal = $ikuResponses->sum(function (TracerResponse $r) use ($umpLookup, $year) {
             $ump = $umpLookup->get($r->work_province_id.'-'.$year);
 
             return $this->iku->bobot($r, $ump);
@@ -93,8 +104,8 @@ class DashboardService
             'melanjutkan_studi' => $melanjutkan->count(),
             'bobot_total' => round($bobotTotal, 2),
             'persentase_responden' => $this->percent($responded->count(), $cohort->count()),
-            'iku_berdasar_responden' => $this->percent($bobotTotal, $responded->count()),
-            'iku_berdasar_lulusan' => $this->percent($bobotTotal, $cohort->count()),
+            'iku_berdasar_responden' => $this->percent($bobotTotal, $ikuResponses->count()),
+            'iku_berdasar_lulusan' => $this->percent($bobotTotal, $ikuCohort->count()),
             'rata_rata_penghasilan' => $gajiTerisi->isEmpty() ? 0 : round($gajiTerisi->avg(), 2),
             'rata_rata_waktu_tunggu' => $waktuTungguTerisi->isEmpty() ? 0 : round($waktuTungguTerisi->avg(), 2),
             'posisi_wiraswasta' => [
@@ -165,6 +176,10 @@ class DashboardService
 
         if (! empty($filters['program_study_id'])) {
             $query->where('program_study_id', $filters['program_study_id']);
+        }
+
+        if (! empty($filters['jenjang'])) {
+            $query->whereHas('studyProgram', fn ($q) => $q->where('level', $filters['jenjang']));
         }
 
         return $query;

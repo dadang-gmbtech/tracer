@@ -62,8 +62,8 @@
     <div class="py-8">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
 
-            @if ($faculties->isNotEmpty())
-                <form method="GET" class="bg-white shadow-sm rounded-lg p-4 flex flex-wrap gap-4 items-end">
+            <form method="GET" class="bg-white shadow-sm rounded-lg p-4 flex flex-wrap gap-4 items-end">
+                @if ($faculties->isNotEmpty())
                     <div>
                         <x-input-label for="faculty_id" value="Fakultas" />
                         <select id="faculty_id" name="faculty_id" class="mt-1 rounded-md border-gray-300 text-sm">
@@ -82,9 +82,24 @@
                             @endforeach
                         </select>
                     </div>
-                    <x-primary-button>Filter</x-primary-button>
-                </form>
-            @endif
+                @endif
+                <div>
+                    <x-input-label for="jenjang" value="Jenjang" />
+                    <select id="jenjang" name="jenjang" class="mt-1 rounded-md border-gray-300 text-sm">
+                        <option value="">Semua Jenjang</option>
+                        @foreach (['D3', 'S1', 'S2', 'S3'] as $level)
+                            <option value="{{ $level }}" @selected(request('jenjang') === $level)>{{ $level }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <x-primary-button>Filter</x-primary-button>
+            </form>
+
+            <p class="text-xs text-gray-500 -mt-2">
+                Catatan: IKU (grafik &amp; rekap fakultas) hanya dihitung untuk lulusan jenjang D3 dan S1, sesuai
+                definisi resmi — lulusan S2/S3 tetap muncul di grafik lain (Responden, Bekerja, dst.) tapi tidak
+                disertakan dalam persentase IKU.
+            </p>
 
             @if (empty($years) || collect($data)->sum('jumlah_alumni') === 0)
                 <div class="bg-white shadow-sm rounded-lg p-6 text-gray-500 text-sm">
@@ -106,6 +121,7 @@
                         <form method="GET" class="flex gap-2 items-center text-sm">
                             @if(request('faculty_id')) <input type="hidden" name="faculty_id" value="{{ request('faculty_id') }}"> @endif
                             @if(request('program_study_id')) <input type="hidden" name="program_study_id" value="{{ request('program_study_id') }}"> @endif
+                            @if(request('jenjang')) <input type="hidden" name="jenjang" value="{{ request('jenjang') }}"> @endif
                             <input type="hidden" name="year_a" value="{{ $yearA }}">
                             <input type="hidden" name="year_b" value="{{ $yearB }}">
                             <label for="recap_year">Tahun</label>
@@ -177,6 +193,7 @@
                         <form method="GET" class="flex gap-2 items-center text-sm">
                             @if(request('faculty_id')) <input type="hidden" name="faculty_id" value="{{ request('faculty_id') }}"> @endif
                             @if(request('program_study_id')) <input type="hidden" name="program_study_id" value="{{ request('program_study_id') }}"> @endif
+                            @if(request('jenjang')) <input type="hidden" name="jenjang" value="{{ request('jenjang') }}"> @endif
                             <select name="year_a" class="rounded-md border-gray-300 text-sm">
                                 @foreach ($years as $y)
                                     <option value="{{ $y }}" @selected($yearA == $y)>{{ $y }}</option>

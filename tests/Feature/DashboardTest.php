@@ -4,8 +4,10 @@ namespace Tests\Feature;
 
 use App\Models\Alumni;
 use App\Models\Faculty;
+use App\Models\StudyProgram;
 use App\Models\TracerResponse;
 use App\Models\User;
+use App\Services\DashboardService;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -68,6 +70,49 @@ class DashboardTest extends TestCase
         $this->actingAs($pimpinan)
             ->get(route('dashboard'))
             ->assertOk();
+    }
+
+    public function test_iku_percentages_only_count_d3_and_s1_alumni(): void
+    {
+        $faculty = Faculty::factory()->create();
+        $s1 = StudyProgram::factory()->create(['level' => 'S1', 'faculty_id' => $faculty->id]);
+        $s2 = StudyProgram::factory()->create(['level' => 'S2', 'faculty_id' => $faculty->id]);
+
+        $s1Alumni = Alumni::factory()->create(['faculty_id' => $faculty->id, 'program_study_id' => $s1->id, 'graduation_year' => 2024]);
+        Alumni::factory()->create(['faculty_id' => $faculty->id, 'program_study_id' => $s2->id, 'graduation_year' => 2024]); // S2, never filled the tracer form
+
+        // masa tunggu < 6 bulan, no UMP on file -> bobot 0.6 (see IkuCalculatorServiceTest).
+        TracerResponse::factory()->create(['alumni_id' => $s1Alumni->id, 'f8' => 1, 'f502' => 2]);
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+
+        $row = app(DashboardService::class)->summary($admin)['data'][2024];
+
+        // General counts still reflect both alumni (S2 included)...
+        $this->assertSame(2, $row['jumlah_alumni']);
+        $this->assertSame(1, $row['bekerja']);
+
+        // ...but IKU is scoped to the single S1 alumni: 0.6 / 1 = 60%, not 0.6 / 2 = 30%.
+        $this->assertSame(60.0, $row['iku_berdasar_lulusan']);
+        $this->assertSame(60.0, $row['iku_berdasar_responden']);
+    }
+
+    public function test_jenjang_filter_narrows_the_dashboard_to_one_level(): void
+    {
+        $faculty = Faculty::factory()->create();
+        $s1 = StudyProgram::factory()->create(['level' => 'S1', 'faculty_id' => $faculty->id]);
+        $d3 = StudyProgram::factory()->create(['level' => 'D3', 'faculty_id' => $faculty->id]);
+
+        Alumni::factory()->create(['faculty_id' => $faculty->id, 'program_study_id' => $s1->id, 'graduation_year' => 2024]);
+        Alumni::factory()->create(['faculty_id' => $faculty->id, 'program_study_id' => $d3->id, 'graduation_year' => 2024]);
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+
+        $row = app(DashboardService::class)->summary($admin, ['jenjang' => 'S1'])['data'][2024];
+
+        $this->assertSame(1, $row['jumlah_alumni']);
     }
 
     public function test_alumni_is_redirected_away_from_the_dashboard(): void
