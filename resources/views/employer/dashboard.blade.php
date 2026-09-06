@@ -18,18 +18,14 @@
         ['label' => 'Indeks Kepuasan Keseluruhan (%)', 'data' => array_map(fn ($y) => $data[$y]['indeks_keseluruhan'], $years), 'borderColor' => '#16a34a', 'tension' => 0.3],
     ]);
 
-    $perPertanyaanConfig = [
-        'type' => 'bar',
-        'data' => [
-            'labels' => array_values(array_map(fn ($q) => $q['label'], $total['per_pertanyaan'])),
-            'datasets' => [[
-                'label' => 'Indeks (%)',
-                'data' => array_values(array_map(fn ($q) => $q['indeks'], $total['per_pertanyaan'])),
-                'backgroundColor' => '#0891b2',
-            ]],
-        ],
-        'options' => ['responsive' => true, 'maintainAspectRatio' => false, 'indexAxis' => 'y', 'scales' => ['x' => ['min' => 0, 'max' => 100]]],
-    ];
+    $palette = ['#1d4ed8', '#ea580c', '#16a34a', '#0891b2', '#a21caf', '#ca8a04', '#dc2626'];
+    $questionFields = array_keys($total['per_pertanyaan']);
+    $perPertanyaanConfig = $lineConfig(collect($questionFields)->map(fn ($field, $i) => [
+        'label' => $total['per_pertanyaan'][$field]['label'],
+        'data' => array_map(fn ($y) => $data[$y]['per_pertanyaan'][$field]['indeks'], $years),
+        'borderColor' => $palette[$i % count($palette)],
+        'tension' => 0.3,
+    ])->values()->all());
 @endphp
 
 <x-app-layout>
@@ -90,7 +86,7 @@
                     <x-chart-card title="Indeks Kepuasan per Tahun" :config="$indeksTrenConfig" />
                 </div>
 
-                <x-chart-card title="Indeks per Pertanyaan" :config="$perPertanyaanConfig" height="360px" />
+                <x-chart-card title="Indeks per Pertanyaan per Tahun" :config="$perPertanyaanConfig" height="360px" />
 
                 @if ($facultyRecap['rows']->count() > 1)
                     <div class="bg-white shadow-sm rounded-lg p-6">
