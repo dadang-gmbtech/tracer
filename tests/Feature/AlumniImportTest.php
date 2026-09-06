@@ -222,6 +222,32 @@ class AlumniImportTest extends TestCase
         });
     }
 
+    public function test_new_faculty_without_a_name_column_gets_the_known_unsoed_name_instead_of_its_bare_code(): void
+    {
+        // The real national export format has no nama_fakultas column at all
+        // — only kode_fakultas — so the fallback must resolve "A" to
+        // "Pertanian" instead of saving the faculty as literally named "A".
+        $file = $this->csvFile(
+            ['nim', 'nama', 'tahunlulus', 'kodeprog', 'namajenjang', 'namaprogdikti', 'kode_fakultas'],
+            [[
+                'nim' => 'A0A021009',
+                'nama' => 'Contoh Tanpa Nama Fakultas',
+                'tahunlulus' => 2025,
+                'kodeprog' => '54403',
+                'namajenjang' => 'D3',
+                'namaprogdikti' => 'Agribisnis',
+                'kode_fakultas' => 'A',
+            ]]
+        );
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin Universitas');
+
+        $this->actingAs($admin)->post(route('alumni.import'), ['file' => $file]);
+
+        $this->assertDatabaseHas('faculties', ['code' => 'A', 'name' => 'Pertanian']);
+    }
+
     public function test_admin_universitas_can_bootstrap_a_new_program_studi_using_the_picked_faculty(): void
     {
         $faculty = Faculty::factory()->create(['code' => 'A', 'name' => 'Pertanian']);

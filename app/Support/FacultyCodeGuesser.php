@@ -19,10 +19,39 @@ use Illuminate\Support\Collection;
  */
 class FacultyCodeGuesser
 {
+    /**
+     * UNSOED's fixed faculty code -> name directory, used as a fallback
+     * whenever an import creates a new faculty but the file itself doesn't
+     * carry a proper name for it (e.g. a national-format file that only has
+     * kodefak, not namafakultas) — without this, the faculty would silently
+     * be saved with its single-letter code as its "name".
+     *
+     * @var array<string, string>
+     */
+    public const NAMES = [
+        'A' => 'Pertanian',
+        'B' => 'Biologi',
+        'C' => 'Ekonomi dan Bisnis',
+        'D' => 'Peternakan',
+        'E' => 'Hukum',
+        'F' => 'Ilmu Sosial dan Ilmu Politik',
+        'G' => 'Kedokteran',
+        'H' => 'Teknik',
+        'I' => 'Ilmu-ilmu Kesehatan',
+        'J' => 'Ilmu Budaya',
+        'K' => 'Matematika dan Ilmu Pengetahuan Alam',
+        'L' => 'Perikanan dan Ilmu Kelautan',
+    ];
+
     public static function guess(string $nim, Collection $facultiesByCode): ?string
     {
         $code = strtoupper(substr(trim($nim), 0, 1));
 
         return $facultiesByCode->has($code) ? $code : null;
+    }
+
+    public static function name(string $code): ?string
+    {
+        return self::NAMES[strtoupper($code)] ?? null;
     }
 }

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Alumni;
 use App\Models\Faculty;
 use App\Models\StudyProgram;
+use App\Support\FacultyCodeGuesser;
 
 /**
  * Find-or-create an Alumni (and its Faculty/StudyProgram, if new) from
@@ -21,7 +22,7 @@ class AlumniProvisioningService
     {
         $faculty = Faculty::firstOrCreate(
             ['code' => $identity['faculty_code']],
-            ['name' => $identity['faculty_name'] ?? $identity['faculty_code']]
+            ['name' => $identity['faculty_name'] ?? FacultyCodeGuesser::name($identity['faculty_code']) ?? $identity['faculty_code']]
         );
 
         $studyProgram = StudyProgram::firstOrCreate(

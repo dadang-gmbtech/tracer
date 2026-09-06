@@ -140,7 +140,7 @@ class AlumniImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
             $faculty = $facultiesByCode->get($facultyCode);
 
             if (! $faculty) {
-                $faculty = Faculty::create(['code' => $facultyCode, 'name' => $facultyName ?? $facultyCode]);
+                $faculty = Faculty::create(['code' => $facultyCode, 'name' => $facultyName ?? FacultyCodeGuesser::name($facultyCode) ?? $facultyCode]);
                 $facultiesByCode->put($facultyCode, $faculty);
             }
 
