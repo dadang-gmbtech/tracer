@@ -143,12 +143,13 @@ class AlumniImportTest extends TestCase
         $this->assertSame('2003-02-13', $user->tanggal_lahir->format('Y-m-d'));
     }
 
-    public function test_duplicate_login_email_skips_only_that_login_without_failing_the_whole_import(): void
+    public function test_duplicate_login_email_falls_back_to_a_nim_based_email_without_failing_the_import(): void
     {
         $faculty = Faculty::factory()->create(['code' => 'H']);
         $studyProgram = StudyProgram::factory()->create(['code' => '55201', 'faculty_id' => $faculty->id]);
 
-        // An existing user already owns this email under a different NIM.
+        // An existing user already owns this email under a different NIM —
+        // e.g. the same person continuing from S1 to S2 with a new NIM.
         User::factory()->create(['nim' => 'A0A020999', 'email' => 'shared@example.com']);
 
         $file = $this->csvFile(
@@ -178,12 +179,13 @@ class AlumniImportTest extends TestCase
 
         $response = $this->actingAs($admin)->post(route('alumni.import'), ['file' => $file]);
 
-        // Both alumni rows are saved regardless of the login-account collision...
+        // Both alumni rows are saved...
         $this->assertDatabaseHas('alumni', ['nim' => 'A0A021010', 'nama' => 'Punya Email Bentrok']);
         $this->assertDatabaseHas('alumni', ['nim' => 'A0A021011']);
 
-        // ...but only the second one got a login account; the first is reported, not silently lost.
-        $this->assertDatabaseMissing('users', ['nim' => 'A0A021010']);
+        // ...and both get a login account — the colliding one falls back to a NIM-based
+        // email (login is by NIM + Tanggal Lahir, not by email) instead of being skipped.
+        $this->assertDatabaseHas('users', ['nim' => 'A0A021010', 'email' => 'A0A021010@mhs.unsoed.ac.id']);
         $this->assertDatabaseHas('users', ['nim' => 'A0A021011', 'email' => 'normal@example.com']);
 
         $response->assertSessionHas('importSkipped', function (array $skipped) {

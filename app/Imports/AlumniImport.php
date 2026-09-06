@@ -206,13 +206,27 @@ class AlumniImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
         $loginEmail = $email ?? $alumni->email ?? ($alumni->nim.'@mhs.unsoed.ac.id');
         $emailOwner = $usersByEmail->get($loginEmail);
 
+        // Same person often reappears under a new NIM (e.g. continuing from
+        // S1 to S2/S3) with the same personal email. Login is by NIM +
+        // Tanggal Lahir, not by email, so it's safe to fall back to a
+        // NIM-based email here rather than skip creating this account.
         if ($emailOwner && $emailOwner->nim !== $alumni->nim) {
+            $fallbackEmail = $alumni->nim.'@mhs.unsoed.ac.id';
+
+            if ($usersByEmail->has($fallbackEmail)) {
+                $this->skipped[] = [
+                    'row' => $line,
+                    'reason' => "NIM {$alumni->nim}: data alumni tersimpan, tapi akun login tidak dibuat — email {$loginEmail} dan {$fallbackEmail} sudah dipakai",
+                ];
+
+                return;
+            }
+
             $this->skipped[] = [
                 'row' => $line,
-                'reason' => "NIM {$alumni->nim}: data alumni tersimpan, tapi akun login tidak dibuat — email {$loginEmail} sudah dipakai NIM {$emailOwner->nim}",
+                'reason' => "NIM {$alumni->nim}: akun login dibuat dengan email {$fallbackEmail} (bukan {$loginEmail}), karena email itu sudah dipakai NIM {$emailOwner->nim} — kemungkinan alumni yang sama melanjutkan studi",
             ];
-
-            return;
+            $loginEmail = $fallbackEmail;
         }
 
         $user = User::create([
