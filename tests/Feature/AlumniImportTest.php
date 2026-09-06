@@ -248,6 +248,45 @@ class AlumniImportTest extends TestCase
         $this->assertDatabaseHas('faculties', ['code' => 'A', 'name' => 'Pertanian']);
     }
 
+    public function test_kode_fakultas_with_stray_whitespace_reuses_the_same_faculty_instead_of_duplicating_it(): void
+    {
+        // Real exports sometimes carry invisible formatting noise (a
+        // trailing space, a non-breaking space) in kode_fakultas — without
+        // normalizing it, each row would create its own "duplicate" faculty
+        // that only looks the same when rendered.
+        $file = $this->csvFile(
+            ['nim', 'nama', 'tahunlulus', 'kodeprog', 'namajenjang', 'namaprogdikti', 'kode_fakultas'],
+            [
+                [
+                    'nim' => 'A0A021012',
+                    'nama' => 'Baris Satu',
+                    'tahunlulus' => 2025,
+                    'kodeprog' => '54404',
+                    'namajenjang' => 'D3',
+                    'namaprogdikti' => 'Agribisnis',
+                    'kode_fakultas' => 'A',
+                ],
+                [
+                    'nim' => 'A0A021013',
+                    'nama' => 'Baris Dua',
+                    'tahunlulus' => 2025,
+                    'kodeprog' => '54405',
+                    'namajenjang' => 'D3',
+                    'namaprogdikti' => 'Agroteknologi',
+                    'kode_fakultas' => 'A ', // trailing space
+                ],
+            ]
+        );
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin Universitas');
+
+        $this->actingAs($admin)->post(route('alumni.import'), ['file' => $file]);
+
+        $this->assertSame(1, Faculty::where('code', 'A')->count());
+        $this->assertDatabaseHas('faculties', ['code' => 'A', 'name' => 'Pertanian']);
+    }
+
     public function test_admin_universitas_can_bootstrap_a_new_program_studi_using_the_picked_faculty(): void
     {
         $faculty = Faculty::factory()->create(['code' => 'A', 'name' => 'Pertanian']);

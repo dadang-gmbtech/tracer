@@ -109,7 +109,7 @@ class AlumniImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
         }
 
         $studyProgram = $studyProgramsByCode->get($prodiCode);
-        $facultyCode = $this->pick($row, ['kode_fakultas', 'kodefak'])
+        $facultyCode = FacultyCodeGuesser::normalize($this->pick($row, ['kode_fakultas', 'kodefak']))
             ?? $this->defaultFaculty?->code
             ?? FacultyCodeGuesser::guess($nim, $facultiesByCode);
         $facultyName = $this->pick($row, ['nama_fakultas', 'namafakultas']) ?? $this->defaultFaculty?->name;

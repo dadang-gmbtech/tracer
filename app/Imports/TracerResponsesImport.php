@@ -155,14 +155,14 @@ class TracerResponsesImport implements SkipsEmptyRows, ToCollection, WithHeading
     {
         return ImportScopeGuard::allows(
             $this->importedBy,
-            TracerValueParser::str($row['kodefak'] ?? null) ?? FacultyCodeGuesser::guess($nim, $facultiesByCode),
+            FacultyCodeGuesser::normalize(TracerValueParser::str($row['kodefak'] ?? null)) ?? FacultyCodeGuesser::guess($nim, $facultiesByCode),
             TracerValueParser::str($row['kodeprog'] ?? null),
         );
     }
 
     private function findOrCreateAlumni(string $nim, Collection $row, Collection $studyProgramsByCode, Collection $facultiesByCode): ?Alumni
     {
-        $facultyCode = TracerValueParser::str($row['kodefak'] ?? null) ?? FacultyCodeGuesser::guess($nim, $facultiesByCode);
+        $facultyCode = FacultyCodeGuesser::normalize(TracerValueParser::str($row['kodefak'] ?? null)) ?? FacultyCodeGuesser::guess($nim, $facultiesByCode);
         $prodiCode = TracerValueParser::str($row['kodeprog'] ?? null);
 
         if ($facultyCode === null || $prodiCode === null) {

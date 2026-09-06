@@ -20,9 +20,11 @@ class AlumniProvisioningService
      */
     public function findOrCreate(string $nim, array $identity): Alumni
     {
+        $facultyCode = FacultyCodeGuesser::normalize($identity['faculty_code']) ?? $identity['faculty_code'];
+
         $faculty = Faculty::firstOrCreate(
-            ['code' => $identity['faculty_code']],
-            ['name' => $identity['faculty_name'] ?? FacultyCodeGuesser::name($identity['faculty_code']) ?? $identity['faculty_code']]
+            ['code' => $facultyCode],
+            ['name' => $identity['faculty_name'] ?? FacultyCodeGuesser::name($facultyCode) ?? $facultyCode]
         );
 
         $studyProgram = StudyProgram::firstOrCreate(

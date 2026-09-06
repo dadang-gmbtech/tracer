@@ -54,4 +54,25 @@ class FacultyCodeGuesser
     {
         return self::NAMES[strtoupper($code)] ?? null;
     }
+
+    /**
+     * Real exported files (Excel/CSV) routinely carry a kode_fakultas value
+     * with invisible formatting noise — trailing spaces, a stray carriage
+     * return, a non-breaking space — that's invisible in a spreadsheet cell
+     * but makes "A" and "A " two different strings to a database unique
+     * constraint. Left unnormalized, every import creates a brand-new
+     * faculty instead of reusing the existing one for that code. Strips all
+     * whitespace (not just the ends) and uppercases, so "A", " A", "a\r",
+     * "A\u{A0}" all collapse to the same "A".
+     */
+    public static function normalize(?string $code): ?string
+    {
+        if ($code === null) {
+            return null;
+        }
+
+        $normalized = preg_replace('/[\s\x{00A0}]+/u', '', $code);
+
+        return $normalized === '' ? null : strtoupper($normalized);
+    }
 }
