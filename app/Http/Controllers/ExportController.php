@@ -17,6 +17,7 @@ class ExportController extends Controller
     public function tracer(Request $request): BinaryFileResponse
     {
         Gate::authorize('export-data');
+        $this->raiseLimitsForLargeExport();
 
         $query = $this->scopedAlumniQuery($request);
 
@@ -26,6 +27,7 @@ class ExportController extends Controller
     public function alumni(Request $request): BinaryFileResponse
     {
         Gate::authorize('export-data');
+        $this->raiseLimitsForLargeExport();
 
         $query = $this->scopedAlumniQuery($request);
 
@@ -44,6 +46,22 @@ class ExportController extends Controller
         $summary = $dashboard->summary($request->user(), $filters);
 
         return Excel::download(new DashboardSummaryExport($summary), 'ringkasan-dashboard-'.now()->format('Ymd-His').'.xlsx');
+    }
+
+    /**
+     * TracerResponsesExport/AlumniExport already read via FromQuery +
+     * WithChunkReading, which keeps Eloquent's own memory use bounded — but
+     * PhpSpreadsheet still has to hold a Cell object for every row/column of
+     * the final workbook in memory before it can write the file (there's no
+     * true streaming XLSX writer), and each Cell carries real overhead. A
+     * university-wide export (thousands of alumni x ~90 tracer columns)
+     * exceeds PHP's default memory_limit on that alone. Raised only for this
+     * request, not globally.
+     */
+    private function raiseLimitsForLargeExport(): void
+    {
+        ini_set('memory_limit', '2048M');
+        set_time_limit(300);
     }
 
     private function scopedAlumniQuery(Request $request)

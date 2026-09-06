@@ -38,6 +38,11 @@ class EmployerImportController extends Controller
 
         $request->validate(['file' => ['required', 'file', 'mimes:xlsx,xls,csv']]);
 
+        // A large/complex real-world file can push PhpSpreadsheet's peak
+        // memory past PHP's default limit while parsing it.
+        ini_set('memory_limit', '2048M');
+        set_time_limit(300);
+
         $import = new EmployerResponseImport($request->user());
         Excel::import($import, $request->file('file'));
 

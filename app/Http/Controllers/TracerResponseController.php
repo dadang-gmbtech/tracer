@@ -77,6 +77,12 @@ class TracerResponseController extends Controller
 
         $request->validate(['file' => ['required', 'file', 'mimes:xlsx,xls,csv']]);
 
+        // TracerResponsesImport reads in chunks (see its chunkSize()), but a
+        // large/complex real-world file can still push PhpSpreadsheet's peak
+        // memory past PHP's default limit while parsing a chunk.
+        ini_set('memory_limit', '2048M');
+        set_time_limit(300);
+
         $import = new TracerResponsesImport($request->user());
         Excel::import($import, $request->file('file'));
 
