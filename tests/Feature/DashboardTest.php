@@ -98,6 +98,29 @@ class DashboardTest extends TestCase
         $this->assertSame(60.0, $row['iku_berdasar_responden']);
     }
 
+    public function test_average_salary_only_divides_by_alumni_who_filled_it_in(): void
+    {
+        $faculty = Faculty::factory()->create();
+
+        $filledA = Alumni::factory()->create(['faculty_id' => $faculty->id, 'graduation_year' => 2024]);
+        $filledB = Alumni::factory()->create(['faculty_id' => $faculty->id, 'graduation_year' => 2024]);
+        $unfilled = Alumni::factory()->create(['faculty_id' => $faculty->id, 'graduation_year' => 2024]);
+
+        TracerResponse::factory()->create(['alumni_id' => $filledA->id, 'f8' => 1, 'f505' => 4_000_000]);
+        TracerResponse::factory()->create(['alumni_id' => $filledB->id, 'f8' => 1, 'f505' => 6_000_000]);
+        // Responded, but left the salary question blank — must not count toward the divisor.
+        TracerResponse::factory()->create(['alumni_id' => $unfilled->id, 'f8' => 1, 'f505' => null]);
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+
+        $row = app(DashboardService::class)->summary($admin)['data'][2024];
+
+        // (4jt + 6jt) / 2 who filled it in = 5jt — not / 3 responden.
+        $this->assertSame(3, $row['responden']);
+        $this->assertSame(5_000_000.0, $row['rata_rata_penghasilan']);
+    }
+
     public function test_jenjang_filter_narrows_the_dashboard_to_one_level(): void
     {
         $faculty = Faculty::factory()->create();
