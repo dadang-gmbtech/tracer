@@ -9,6 +9,7 @@ use App\Models\Province;
 use App\Models\StudyProgram;
 use App\Models\User;
 use App\Services\AlumniProvisioningService;
+use App\Support\FacultyCodeGuesser;
 use App\Support\ImportScopeGuard;
 use App\Support\TracerFieldCodes;
 use App\Support\TracerValueParser;
@@ -113,7 +114,7 @@ class TracerResponsesImport implements SkipsEmptyRows, ToCollection, WithHeading
                 return;
             }
         } else {
-            if (! $this->authorizedForRow($row)) {
+            if (! $this->authorizedForRow($row, $nim, $facultiesByCode)) {
                 $this->skipped[] = ['row' => $line, 'reason' => "NIM {$nim} (baru) di luar cakupan Anda"];
 
                 return;
@@ -145,22 +146,23 @@ class TracerResponsesImport implements SkipsEmptyRows, ToCollection, WithHeading
 
     /**
      * Whether the importing user may create a brand-new alumni for this row,
-     * based on the row's own kodefak/kodeprog against the actor's scope
+     * based on the row's own kodefak/kodeprog (or a NIM-based guess when
+     * kodefak is missing — see FacultyCodeGuesser) against the actor's scope
      * (an existing alumni's own faculty/prodi is checked via the fillTracer
      * policy instead — see collection() above).
      */
-    private function authorizedForRow(Collection $row): bool
+    private function authorizedForRow(Collection $row, string $nim, Collection $facultiesByCode): bool
     {
         return ImportScopeGuard::allows(
             $this->importedBy,
-            TracerValueParser::str($row['kodefak'] ?? null),
+            TracerValueParser::str($row['kodefak'] ?? null) ?? FacultyCodeGuesser::guess($nim, $facultiesByCode),
             TracerValueParser::str($row['kodeprog'] ?? null),
         );
     }
 
     private function findOrCreateAlumni(string $nim, Collection $row, Collection $studyProgramsByCode, Collection $facultiesByCode): ?Alumni
     {
-        $facultyCode = TracerValueParser::str($row['kodefak'] ?? null);
+        $facultyCode = TracerValueParser::str($row['kodefak'] ?? null) ?? FacultyCodeGuesser::guess($nim, $facultiesByCode);
         $prodiCode = TracerValueParser::str($row['kodeprog'] ?? null);
 
         if ($facultyCode === null || $prodiCode === null) {

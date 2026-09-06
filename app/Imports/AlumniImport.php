@@ -6,6 +6,7 @@ use App\Models\Alumni;
 use App\Models\Faculty;
 use App\Models\StudyProgram;
 use App\Models\User;
+use App\Support\FacultyCodeGuesser;
 use App\Support\ImportScopeGuard;
 use App\Support\TracerValueParser;
 use Illuminate\Support\Collection;
@@ -25,10 +26,11 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
  *
  * The program studi (kodeprog) must already be registered (via Admin >
  * Program Studi, or a prior Impor Data Tracer upload) unless it can be
- * created on the fly — either the file carries kode_fakultas/nama_fakultas,
- * or the uploader picked a faculty on the import form ($defaultFaculty),
- * which is handy for the real export format that has no faculty columns at
- * all: upload the file once per faculty and pick it from the dropdown.
+ * created on the fly. The faculty for a new program studi is resolved, in
+ * order: the file's own kode_fakultas/nama_fakultas, the faculty picked on
+ * the import form ($defaultFaculty), or — as a last resort — guessed from
+ * the NIM's first letter (see FacultyCodeGuesser), which is handy for the
+ * real export format that has no faculty columns at all.
  *
  * If tgllahir/tanggal_lahir is filled in, a login account (NIM + Tanggal
  * Lahir) is also created/updated for that alumni; leave it blank to skip
@@ -107,13 +109,15 @@ class AlumniImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
         }
 
         $studyProgram = $studyProgramsByCode->get($prodiCode);
-        $facultyCode = $this->pick($row, ['kode_fakultas', 'kodefak']) ?? $this->defaultFaculty?->code;
+        $facultyCode = $this->pick($row, ['kode_fakultas', 'kodefak'])
+            ?? $this->defaultFaculty?->code
+            ?? FacultyCodeGuesser::guess($nim, $facultiesByCode);
         $facultyName = $this->pick($row, ['nama_fakultas', 'namafakultas']) ?? $this->defaultFaculty?->name;
 
         if (! $studyProgram && $facultyCode === null) {
             $this->skipped[] = [
                 'row' => $line,
-                'reason' => "NIM {$nim}: kode prodi {$prodiCode} belum terdaftar — tambahkan dulu lewat Administrasi > Program Studi, sertakan kolom kode_fakultas, atau pilih Fakultas di form impor",
+                'reason' => "NIM {$nim}: kode prodi {$prodiCode} belum terdaftar dan fakultas tidak bisa ditebak dari NIM — tambahkan prodinya dulu lewat Administrasi > Program Studi, sertakan kolom kode_fakultas, atau pilih Fakultas di form impor",
             ];
 
             return;

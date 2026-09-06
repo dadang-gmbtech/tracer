@@ -88,6 +88,35 @@ class AlumniImportTest extends TestCase
         $this->assertDatabaseMissing('alumni', ['nim' => 'A0A021002']);
     }
 
+    public function test_faculty_is_guessed_from_the_nims_first_letter_when_no_faculty_info_is_given(): void
+    {
+        Faculty::factory()->create(['code' => 'H', 'name' => 'Teknik']);
+
+        $file = $this->csvFile(
+            ['nim', 'nama', 'tahunlulus', 'kodeprog', 'namajenjang', 'namaprogdikti'],
+            [[
+                'nim' => 'H1D019057', // starts with "H" -> matches the existing "Teknik" faculty
+                'nama' => 'Contoh Tebakan NIM',
+                'tahunlulus' => 2025,
+                'kodeprog' => '55201',
+                'namajenjang' => 'S1',
+                'namaprogdikti' => 'Informatika',
+            ]]
+        );
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin Universitas');
+
+        $response = $this->actingAs($admin)->post(route('alumni.import'), ['file' => $file]);
+
+        $response->assertRedirect(route('alumni.import.form'));
+        $this->assertDatabaseHas('program_studies', ['code' => '55201', 'name' => 'Informatika']);
+        $this->assertDatabaseHas('alumni', [
+            'nim' => 'H1D019057',
+            'faculty_id' => Faculty::where('code', 'H')->value('id'),
+        ]);
+    }
+
     public function test_admin_universitas_can_bootstrap_a_new_program_studi_when_faculty_columns_are_present(): void
     {
         $file = $this->csvFile(

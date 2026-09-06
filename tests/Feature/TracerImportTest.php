@@ -116,6 +116,33 @@ class TracerImportTest extends TestCase
         $this->assertDatabaseMissing('users', ['nim' => 'A1A300CCC']);
     }
 
+    public function test_faculty_is_guessed_from_the_nims_first_letter_when_kodefak_is_missing(): void
+    {
+        Faculty::factory()->create(['code' => 'H', 'name' => 'Teknik']);
+
+        $file = $this->csvFile([[
+            'nimhsmsmh' => 'H1D019099', // starts with "H" -> matches the existing "Teknik" faculty
+            'nmmhsmsmh' => 'Contoh Tebakan NIM',
+            'tahun_lulus' => 2024,
+            // kodefak/namafakultas intentionally left blank
+            'kodeprog' => '55201',
+            'namajenjang' => 'S1',
+            'namaprogdikti' => 'Informatika',
+            'f8' => 1,
+        ]]);
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin Universitas');
+
+        $this->actingAs($admin)->post(route('tracer.import'), ['file' => $file]);
+
+        $this->assertDatabaseHas('alumni', [
+            'nim' => 'H1D019099',
+            'faculty_id' => Faculty::where('code', 'H')->value('id'),
+        ]);
+        $this->assertDatabaseHas('program_studies', ['code' => '55201', 'name' => 'Informatika']);
+    }
+
     public function test_admin_fakultas_cannot_import_tracer_data_for_alumni_outside_their_faculty(): void
     {
         $ownFaculty = Faculty::factory()->create();

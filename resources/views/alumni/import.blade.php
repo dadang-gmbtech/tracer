@@ -32,9 +32,10 @@
                     <p>
                         Setiap baris dicocokkan lewat kolom <strong>nim</strong>, dan program studi dicocokkan lewat
                         <strong>kodeprog</strong>. Kalau kode prodi belum terdaftar, sistem butuh tahu fakultasnya —
-                        pilih lewat dropdown <strong>Fakultas</strong> di bawah (berlaku untuk semua baris di file
-                        ini), atau sertakan kolom <code>kode_fakultas</code> / <code>nama_fakultas</code> di file
-                        (kalau ada, ini lebih diutamakan daripada pilihan dropdown).
+                        urutan yang dicoba: kolom <code>kode_fakultas</code> / <code>nama_fakultas</code> di file
+                        (kalau ada), lalu dropdown <strong>Fakultas</strong> di bawah, dan terakhir ditebak otomatis
+                        dari huruf pertama NIM (mis. NIM diawali "H" → Fakultas Teknik) kalau cocok dengan fakultas
+                        yang sudah terdaftar.
                     </p>
                     <p class="text-amber-700">
                         Kalau kolom <strong>tgllahir</strong> (tanggal lahir) terisi, akun login alumni (NIM &
