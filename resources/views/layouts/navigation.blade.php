@@ -59,7 +59,7 @@
                         </x-dropdown>
                     @endif
 
-                    @if ($canManageUsers || $canManageMaster || $canManageQuestions)
+                    @if ($canManageUsers || $canManageMaster || $canManageQuestions || $canImportTracer)
                         <x-dropdown align="left" width="56">
                             <x-slot name="trigger">
                                 <button class="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-500 hover:text-gray-700 border-b-2 border-transparent">
@@ -70,6 +70,9 @@
                             <x-slot name="content">
                                 @if ($canManageUsers)
                                     <x-dropdown-link :href="route('admin.users.index')">Manajemen User</x-dropdown-link>
+                                @endif
+                                @if ($canImportTracer)
+                                    <x-dropdown-link :href="route('alumni.import.form')">Impor Data Alumni</x-dropdown-link>
                                 @endif
                                 @if ($canManageMaster)
                                     <x-dropdown-link :href="route('admin.faculties.index')">Fakultas</x-dropdown-link>
@@ -138,6 +141,7 @@
             @endunless
             @if ($canImportTracer)
                 <x-responsive-nav-link :href="route('tracer.import.form')">Impor Data Tracer</x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('alumni.import.form')">Impor Data Alumni</x-responsive-nav-link>
             @endif
             @if ($canManageUsers)
                 <x-responsive-nav-link :href="route('admin.users.index')">Manajemen User</x-responsive-nav-link>

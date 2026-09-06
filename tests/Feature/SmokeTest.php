@@ -66,6 +66,8 @@ class SmokeTest extends TestCase
             route('admin.users.create'),
             route('admin.users.edit', $admin),
             route('admin.users.import.form'),
+            route('tracer.import.form'),
+            route('alumni.import.form'),
             route('admin.faculties.index'),
             route('admin.faculties.create'),
             route('admin.faculties.edit', $faculty),

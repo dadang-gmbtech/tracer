@@ -4,10 +4,10 @@ namespace App\Imports;
 
 use App\Models\Alumni;
 use App\Models\City;
-use App\Models\Faculty;
 use App\Models\Province;
-use App\Models\StudyProgram;
 use App\Models\User;
+use App\Services\AlumniProvisioningService;
+use App\Support\ImportScopeGuard;
 use App\Support\TracerFieldCodes;
 use App\Support\TracerValueParser;
 use Illuminate\Support\Collection;
@@ -94,21 +94,11 @@ class TracerResponsesImport implements SkipsEmptyRows, ToCollection, WithHeading
      */
     private function authorizedForRow(Collection $row): bool
     {
-        $actor = $this->importedBy;
-
-        if ($actor->hasAnyRole(['Super Admin', 'Admin Universitas'])) {
-            return true;
-        }
-
-        if ($actor->hasRole('Admin Prodi')) {
-            return $actor->studyProgram && $actor->studyProgram->code === TracerValueParser::str($row['kodeprog'] ?? null);
-        }
-
-        if ($actor->hasAnyRole(['Admin Fakultas', 'Surveyor'])) {
-            return $actor->faculty && $actor->faculty->code === TracerValueParser::str($row['kodefak'] ?? null);
-        }
-
-        return false;
+        return ImportScopeGuard::allows(
+            $this->importedBy,
+            TracerValueParser::str($row['kodefak'] ?? null),
+            TracerValueParser::str($row['kodeprog'] ?? null),
+        );
     }
 
     private function findOrCreateAlumni(string $nim, Collection $row): ?Alumni
@@ -120,35 +110,19 @@ class TracerResponsesImport implements SkipsEmptyRows, ToCollection, WithHeading
             return null;
         }
 
-        $faculty = Faculty::firstOrCreate(
-            ['code' => $facultyCode],
-            ['name' => TracerValueParser::str($row['namafakultas'] ?? null) ?? $facultyCode]
-        );
-
-        $studyProgram = StudyProgram::firstOrCreate(
-            ['code' => $prodiCode],
-            [
-                'faculty_id' => $faculty->id,
-                'name' => TracerValueParser::str($row['namaprogdikti'] ?? null) ?? $prodiCode,
-                'level' => TracerValueParser::str($row['namajenjang'] ?? null) ?? '-',
-            ]
-        );
-
-        $email = TracerValueParser::str($row['emailmsmh'] ?? null) ?? TracerValueParser::str($row['emailunsoed'] ?? null);
-
-        return Alumni::updateOrCreate(
-            ['nim' => $nim],
-            [
-                'nama' => TracerValueParser::str($row['nmmhsmsmh'] ?? null) ?? $nim,
-                'email' => $email,
-                'faculty_id' => $faculty->id,
-                'program_study_id' => $studyProgram->id,
-                'graduation_year' => TracerValueParser::int($row['tahun_lulus'] ?? null),
-                'nik' => TracerValueParser::str($row['nik'] ?? null),
-                'npwp' => TracerValueParser::str($row['npwp'] ?? null),
-                'phone' => TracerValueParser::str($row['telpomsmh'] ?? null),
-            ]
-        );
+        return (new AlumniProvisioningService)->findOrCreate($nim, [
+            'nama' => TracerValueParser::str($row['nmmhsmsmh'] ?? null),
+            'email' => TracerValueParser::str($row['emailmsmh'] ?? null) ?? TracerValueParser::str($row['emailunsoed'] ?? null),
+            'faculty_code' => $facultyCode,
+            'faculty_name' => TracerValueParser::str($row['namafakultas'] ?? null),
+            'prodi_code' => $prodiCode,
+            'prodi_name' => TracerValueParser::str($row['namaprogdikti'] ?? null),
+            'prodi_level' => TracerValueParser::str($row['namajenjang'] ?? null),
+            'graduation_year' => TracerValueParser::int($row['tahun_lulus'] ?? null),
+            'nik' => TracerValueParser::str($row['nik'] ?? null),
+            'npwp' => TracerValueParser::str($row['npwp'] ?? null),
+            'phone' => TracerValueParser::str($row['telpomsmh'] ?? null),
+        ]);
     }
 
     private function mapRow(Collection $row): array

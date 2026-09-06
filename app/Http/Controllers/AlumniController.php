@@ -2,9 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\AlumniTemplateExport;
+use App\Imports\AlumniImport;
 use App\Models\Alumni;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class AlumniController extends Controller
 {
@@ -41,5 +47,33 @@ class AlumniController extends Controller
         $alumni->load(['faculty', 'studyProgram', 'tracerResponse', 'employerResponses']);
 
         return view('alumni.show', ['alumni' => $alumni]);
+    }
+
+    public function importForm(): View
+    {
+        Gate::authorize('fill-tracer');
+
+        return view('alumni.import');
+    }
+
+    public function template(): BinaryFileResponse
+    {
+        Gate::authorize('fill-tracer');
+
+        return Excel::download(new AlumniTemplateExport, 'template-data-alumni.xlsx');
+    }
+
+    public function import(Request $request): RedirectResponse
+    {
+        Gate::authorize('fill-tracer');
+
+        $request->validate(['file' => ['required', 'file', 'mimes:xlsx,xls,csv']]);
+
+        $import = new AlumniImport($request->user());
+        Excel::import($import, $request->file('file'));
+
+        return redirect()->route('alumni.import.form')
+            ->with('status', "{$import->created} alumni baru dibuat, {$import->updated} data alumni diperbarui.")
+            ->with('importSkipped', $import->skipped);
     }
 }

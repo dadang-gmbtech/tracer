@@ -45,6 +45,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/tracer/import', [TracerResponseController::class, 'importForm'])->name('tracer.import.form');
     Route::post('/tracer/import', [TracerResponseController::class, 'import'])->name('tracer.import');
 
+    Route::get('/alumni/import', [AlumniController::class, 'importForm'])->name('alumni.import.form');
+    Route::get('/alumni/import/template', [AlumniController::class, 'template'])->name('alumni.import.template');
+    Route::post('/alumni/import', [AlumniController::class, 'import'])->name('alumni.import');
+
     Route::get('/alumni', [AlumniController::class, 'index'])->name('alumni.index');
     Route::get('/alumni/{alumni}', [AlumniController::class, 'show'])->name('alumni.show');
     Route::get('/alumni/{alumni}/tracer', [TracerResponseController::class, 'edit'])->name('tracer.edit');
