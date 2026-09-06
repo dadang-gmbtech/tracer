@@ -4,13 +4,16 @@ namespace App\Imports;
 
 use App\Models\Alumni;
 use App\Models\City;
+use App\Models\Faculty;
 use App\Models\Province;
+use App\Models\StudyProgram;
 use App\Models\User;
 use App\Services\AlumniProvisioningService;
 use App\Support\ImportScopeGuard;
 use App\Support\TracerFieldCodes;
 use App\Support\TracerValueParser;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
@@ -28,6 +31,12 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
  *
  * Column set otherwise mirrors TracerResponsesExport exactly (minus f504),
  * so an exported file can be edited and re-uploaded as-is.
+ *
+ * Performance: alumni/study-program/faculty/province/city lookups are all
+ * preloaded once before the loop (provinces/cities are small tables, loaded
+ * in full; alumni/prodi are loaded only for the codes present in the file),
+ * and every write runs inside one transaction — without this, a several-
+ * thousand-row file turns into tens of thousands of individual queries.
  */
 class TracerResponsesImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
 {
@@ -42,48 +51,87 @@ class TracerResponsesImport implements SkipsEmptyRows, ToCollection, WithHeading
 
     public function collection(Collection $rows): void
     {
-        foreach ($rows as $index => $row) {
-            $line = $index + 2; // 0-based collection index + 1 for the heading row
-            $nim = TracerValueParser::str($row['nimhsmsmh'] ?? null);
+        $nims = $rows->map(fn (Collection $row) => TracerValueParser::str($row['nimhsmsmh'] ?? null))->filter()->unique()->values();
+        $prodiCodes = $rows->map(fn (Collection $row) => TracerValueParser::str($row['kodeprog'] ?? null))->filter()->unique()->values();
 
-            if ($nim === null) {
-                $this->skipped[] = ['row' => $line, 'reason' => 'Kolom nimhsmsmh kosong'];
+        $alumniByNim = Alumni::whereIn('nim', $nims)->with('tracerResponse')->get()->keyBy('nim');
+        $studyProgramsByCode = StudyProgram::whereIn('code', $prodiCodes)->with('faculty')->get()->keyBy('code');
+        $facultiesByCode = Faculty::all()->keyBy('code');
+        $provinces = Province::all();
+        $provincesByName = $provinces->keyBy('name');
+        $provincesByCode = $provinces->keyBy('code');
+        $cities = City::all();
+        $citiesByCode = $cities->keyBy('code');
+        $citiesByProvinceAndName = $cities->keyBy(fn (City $c) => $c->province_id.'|'.$c->name);
 
-                continue;
+        DB::transaction(function () use ($rows, $alumniByNim, $studyProgramsByCode, $facultiesByCode, $provincesByName, $provincesByCode, $citiesByCode, $citiesByProvinceAndName) {
+            foreach ($rows as $index => $row) {
+                $this->importRow(
+                    $row, $index, $alumniByNim, $studyProgramsByCode, $facultiesByCode,
+                    $provincesByName, $provincesByCode, $citiesByCode, $citiesByProvinceAndName,
+                );
             }
+        });
+    }
 
-            $alumni = Alumni::where('nim', $nim)->first();
-            $isNew = $alumni === null;
+    private function importRow(
+        Collection $row,
+        int $index,
+        Collection $alumniByNim,
+        Collection $studyProgramsByCode,
+        Collection $facultiesByCode,
+        Collection $provincesByName,
+        Collection $provincesByCode,
+        Collection $citiesByCode,
+        Collection $citiesByProvinceAndName,
+    ): void {
+        $line = $index + 2; // 0-based collection index + 1 for the heading row
+        $nim = TracerValueParser::str($row['nimhsmsmh'] ?? null);
 
-            if ($alumni) {
-                if (! $this->importedBy->can('fillTracer', $alumni)) {
-                    $this->skipped[] = ['row' => $line, 'reason' => "NIM {$nim} di luar cakupan Anda"];
+        if ($nim === null) {
+            $this->skipped[] = ['row' => $line, 'reason' => 'Kolom nimhsmsmh kosong'];
 
-                    continue;
-                }
-            } else {
-                if (! $this->authorizedForRow($row)) {
-                    $this->skipped[] = ['row' => $line, 'reason' => "NIM {$nim} (baru) di luar cakupan Anda"];
-
-                    continue;
-                }
-
-                $alumni = $this->findOrCreateAlumni($nim, $row);
-
-                if (! $alumni) {
-                    $this->skipped[] = ['row' => $line, 'reason' => "NIM {$nim}: data fakultas/prodi tidak lengkap"];
-
-                    continue;
-                }
-            }
-
-            $data = $this->mapRow($row);
-            $data['submitted_by_user_id'] = $this->importedBy->id;
-            $data['submitted_at'] = TracerValueParser::date($row['waktu_update'] ?? null) ?? now();
-
-            $alumni->tracerResponse()->updateOrCreate(['alumni_id' => $alumni->id], $data);
-            $isNew ? $this->created++ : $this->updated++;
+            return;
         }
+
+        $alumni = $alumniByNim->get($nim);
+        $isNew = $alumni === null;
+
+        if ($alumni) {
+            if (! $this->importedBy->can('fillTracer', $alumni)) {
+                $this->skipped[] = ['row' => $line, 'reason' => "NIM {$nim} di luar cakupan Anda"];
+
+                return;
+            }
+        } else {
+            if (! $this->authorizedForRow($row)) {
+                $this->skipped[] = ['row' => $line, 'reason' => "NIM {$nim} (baru) di luar cakupan Anda"];
+
+                return;
+            }
+
+            $alumni = $this->findOrCreateAlumni($nim, $row, $studyProgramsByCode, $facultiesByCode);
+
+            if (! $alumni) {
+                $this->skipped[] = ['row' => $line, 'reason' => "NIM {$nim}: data fakultas/prodi tidak lengkap"];
+
+                return;
+            }
+
+            $alumniByNim->put($nim, $alumni);
+        }
+
+        $data = $this->mapRow($row, $provincesByName, $provincesByCode, $citiesByCode, $citiesByProvinceAndName);
+        $data['submitted_by_user_id'] = $this->importedBy->id;
+        $data['submitted_at'] = TracerValueParser::date($row['waktu_update'] ?? null) ?? now();
+
+        if ($alumni->tracerResponse) {
+            $alumni->tracerResponse->update($data);
+        } else {
+            $alumni->setRelation('tracerResponse', $alumni->tracerResponse()->create($data));
+        }
+
+        $isNew ? $this->created++ : $this->updated++;
     }
 
     /**
@@ -101,7 +149,7 @@ class TracerResponsesImport implements SkipsEmptyRows, ToCollection, WithHeading
         );
     }
 
-    private function findOrCreateAlumni(string $nim, Collection $row): ?Alumni
+    private function findOrCreateAlumni(string $nim, Collection $row, Collection $studyProgramsByCode, Collection $facultiesByCode): ?Alumni
     {
         $facultyCode = TracerValueParser::str($row['kodefak'] ?? null);
         $prodiCode = TracerValueParser::str($row['kodeprog'] ?? null);
@@ -110,7 +158,7 @@ class TracerResponsesImport implements SkipsEmptyRows, ToCollection, WithHeading
             return null;
         }
 
-        return (new AlumniProvisioningService)->findOrCreate($nim, [
+        $alumni = (new AlumniProvisioningService)->findOrCreate($nim, [
             'nama' => TracerValueParser::str($row['nmmhsmsmh'] ?? null),
             'email' => TracerValueParser::str($row['emailmsmh'] ?? null) ?? TracerValueParser::str($row['emailunsoed'] ?? null),
             'faculty_code' => $facultyCode,
@@ -123,12 +171,22 @@ class TracerResponsesImport implements SkipsEmptyRows, ToCollection, WithHeading
             'npwp' => TracerValueParser::str($row['npwp'] ?? null),
             'phone' => TracerValueParser::str($row['telpomsmh'] ?? null),
         ]);
+
+        if (! $studyProgramsByCode->has($prodiCode)) {
+            $studyProgramsByCode->put($prodiCode, $alumni->studyProgram);
+        }
+
+        if (! $facultiesByCode->has($facultyCode)) {
+            $facultiesByCode->put($facultyCode, $alumni->faculty);
+        }
+
+        return $alumni;
     }
 
-    private function mapRow(Collection $row): array
+    private function mapRow(Collection $row, Collection $provincesByName, Collection $provincesByCode, Collection $citiesByCode, Collection $citiesByProvinceAndName): array
     {
-        $workProvinceId = $this->resolveProvince($row['propinsi_tempat_bekerja'] ?? null, $row['f5a1'] ?? null);
-        $workCityId = $this->resolveCity($workProvinceId, $row['kabupaten_tempat_bekerja'] ?? null, $row['f5a2'] ?? null);
+        $workProvinceId = $this->resolveProvince($row['propinsi_tempat_bekerja'] ?? null, $row['f5a1'] ?? null, $provincesByName, $provincesByCode);
+        $workCityId = $this->resolveCity($workProvinceId, $row['kabupaten_tempat_bekerja'] ?? null, $row['f5a2'] ?? null, $citiesByCode, $citiesByProvinceAndName);
 
         $data = ['work_province_id' => $workProvinceId, 'work_city_id' => $workCityId];
 
@@ -149,34 +207,34 @@ class TracerResponsesImport implements SkipsEmptyRows, ToCollection, WithHeading
         };
     }
 
-    private function resolveProvince(mixed $name, mixed $code): ?int
+    private function resolveProvince(mixed $name, mixed $code, Collection $provincesByName, Collection $provincesByCode): ?int
     {
         $name = TracerValueParser::str($name);
         $code = TracerValueParser::str($code);
 
         if ($name !== null) {
             $clean = trim(str_replace('Prov.', '', $name));
-            $province = Province::where('name', $clean)->first();
+            $province = $provincesByName->get($clean);
             if ($province) {
                 return $province->id;
             }
         }
 
-        return $code !== null ? Province::where('code', $code)->value('id') : null;
+        return $code !== null ? $provincesByCode->get($code)?->id : null;
     }
 
-    private function resolveCity(?int $provinceId, mixed $name, mixed $code): ?int
+    private function resolveCity(?int $provinceId, mixed $name, mixed $code, Collection $citiesByCode, Collection $citiesByProvinceAndName): ?int
     {
         $name = TracerValueParser::str($name);
         $code = TracerValueParser::str($code);
 
         if ($provinceId && $name !== null) {
-            $city = City::where('province_id', $provinceId)->where('name', $name)->first();
+            $city = $citiesByProvinceAndName->get($provinceId.'|'.$name);
             if ($city) {
                 return $city->id;
             }
         }
 
-        return $code !== null ? City::where('code', $code)->value('id') : null;
+        return $code !== null ? $citiesByCode->get($code)?->id : null;
     }
 }
