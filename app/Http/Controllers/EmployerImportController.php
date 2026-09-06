@@ -42,7 +42,7 @@ class EmployerImportController extends Controller
         Excel::import($import, $request->file('file'));
 
         return redirect()->route('employer.import.form')
-            ->with('status', "{$import->created} data pengguna alumni berhasil disimpan.")
+            ->with('status', "{$import->created} data pengguna alumni berhasil disimpan, {$import->noFeedback} baris tanpa data pengguna alumni dilewati.")
             ->with('importSkipped', $import->skipped);
     }
 }

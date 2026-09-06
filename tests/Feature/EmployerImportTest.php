@@ -146,6 +146,87 @@ class EmployerImportTest extends TestCase
         $this->assertDatabaseMissing('employer_responses', ['alumni_id' => $alumni->id]);
     }
 
+    private function combinedFormatFile(array $overrides): UploadedFile
+    {
+        $headers = [
+            'nim', 'nama', 'tahunlulus', 'emailunsoed', 'emailpersonal', 'notelp', 'kodefak', 'namafakultas',
+            'kodeprog', 'namajenjang', 'namaprogdikti', 'namalengkap', 'jabatan', 'namaperusahaan',
+            'alamatperusahaan', 'telpperusahaan', 'kerjasama', 'pengembangandiri', 'komunikasi',
+            'penggunaanteknologi', 'bahasaasing', 'kualitaskeahlian', 'integritas',
+        ];
+        $row = array_merge(array_fill_keys($headers, ''), $overrides);
+        $lines = [implode(',', $headers), implode(',', array_map(fn ($h) => $row[$h], $headers))];
+
+        return UploadedFile::fake()->createWithContent('gabungan.csv', implode("\n", $lines));
+    }
+
+    public function test_the_combined_export_format_with_text_ratings_bootstraps_a_new_alumni(): void
+    {
+        $file = $this->combinedFormatFile([
+            'nim' => 'A0A020041',
+            'nama' => 'Rista Dwi Haliza',
+            'tahunlulus' => 2025,
+            'kodefak' => 'A',
+            'namafakultas' => 'Pertanian',
+            'kodeprog' => '54401',
+            'namajenjang' => 'D3',
+            'namaprogdikti' => 'Agribisnis',
+            'namalengkap' => 'Rista Dwi Haliza',
+            'jabatan' => 'Staff Barista',
+            'namaperusahaan' => 'Paragraf Coffee Servi',
+            'alamatperusahaan' => 'Jl. Gatot Subroto No.53b',
+            'telpperusahaan' => '0857-8421-243',
+            'kerjasama' => 'Sangat Baik',
+            'pengembangandiri' => 'Sangat Baik',
+            'komunikasi' => 'Sangat Baik',
+            'penggunaanteknologi' => 'Baik',
+            'bahasaasing' => 'Baik',
+            'kualitaskeahlian' => 'Baik',
+            'integritas' => 'Sangat Baik',
+        ]);
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin Universitas');
+
+        $response = $this->actingAs($admin)->post(route('employer.import'), ['file' => $file]);
+
+        $response->assertRedirect(route('employer.import.form'));
+        $this->assertDatabaseHas('alumni', ['nim' => 'A0A020041', 'nama' => 'Rista Dwi Haliza']);
+        $this->assertDatabaseHas('faculties', ['code' => 'A', 'name' => 'Pertanian']);
+        $this->assertDatabaseHas('employer_responses', [
+            'nama_pengisi' => 'Rista Dwi Haliza',
+            'nama_perusahaan' => 'Paragraf Coffee Servi',
+            'q1_kerja_sama_tim' => 1,
+            'q4_teknologi_informasi' => 2,
+        ]);
+    }
+
+    public function test_a_row_with_no_employer_columns_filled_in_is_skipped_silently(): void
+    {
+        // Common in the combined format — most alumni rows in that export
+        // haven't been rated by an employer yet. Must not be reported as an
+        // error, and must not bootstrap an alumni for a row with nothing to import.
+        $file = $this->combinedFormatFile([
+            'nim' => 'A0A020042',
+            'nama' => 'Marevta Zaqia',
+            'tahunlulus' => 2025,
+            'kodefak' => 'A',
+            'namafakultas' => 'Pertanian',
+            'kodeprog' => '54401',
+            'namajenjang' => 'D3',
+            'namaprogdikti' => 'Agribisnis',
+        ]);
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin Universitas');
+
+        $response = $this->actingAs($admin)->post(route('employer.import'), ['file' => $file]);
+
+        $response->assertSessionHas('importSkipped', fn (array $skipped) => count($skipped) === 0);
+        $this->assertDatabaseMissing('alumni', ['nim' => 'A0A020042']);
+        $this->assertDatabaseMissing('employer_responses', []);
+    }
+
     public function test_admin_fakultas_cannot_add_feedback_for_an_alumni_outside_their_faculty(): void
     {
         $ownFaculty = Faculty::factory()->create();

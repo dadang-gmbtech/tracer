@@ -26,13 +26,22 @@
                     <p>
                         Untuk menambahkan hasil <strong>kuesioner Pengguna Alumni</strong> yang dikumpulkan di luar
                         sistem (formulir kertas, WhatsApp, telepon). Setiap baris dicocokkan ke alumni lewat kolom
-                        <strong>nim</strong> — NIM yang belum terdaftar akan dilewati, bukan dibuatkan alumni baru.
+                        <strong>nim</strong>. Kalau NIM belum terdaftar dan filenya juga membawa data identitas
+                        (kodefak, namafakultas, kodeprog, dst — format ekspor nasional), alumninya akan dibuatkan
+                        otomatis seperti pada Impor Data Tracer; kalau tidak ada data identitas sama sekali, baris itu
+                        dilewati.
                     </p>
                     <p>
-                        Kolom <code>q1_kerja_sama_tim</code> sampai <code>q7_integritas</code> diisi angka
-                        <strong>1 (Sangat Baik), 2 (Baik), 3 (Cukup), 4 (Kurang)</strong> — skala yang sama dengan
-                        formulir online. Satu alumni boleh punya lebih dari satu penilaian (mis. dari perusahaan yang
-                        berbeda), jadi setiap baris selalu menambah data baru, bukan menimpa yang sebelumnya.
+                        Penilaian bisa diisi angka <strong>1 (Sangat Baik), 2 (Baik), 3 (Cukup), 4 (Kurang)</strong>
+                        atau teksnya langsung ("Sangat Baik", "Baik", dst). File format ekspor nasional yang memakai
+                        nama kolom <code>kerjasama, pengembangandiri, komunikasi, penggunaanteknologi, bahasaasing,
+                        kualitaskeahlian, integritas</code> (dan <code>namalengkap, namaperusahaan,
+                        alamatperusahaan, telpperusahaan</code>) juga diterima langsung, tidak perlu diubah dulu.
+                    </p>
+                    <p>
+                        Baris yang kolom penilaiannya kosong semua (alumni yang belum dinilai) otomatis dilewati
+                        tanpa dianggap error. Satu alumni boleh punya lebih dari satu penilaian (mis. dari perusahaan
+                        yang berbeda) — setiap baris yang terisi selalu menambah data baru, bukan menimpa yang lama.
                     </p>
                     <a href="{{ route('employer.import.template') }}" class="inline-block text-blue-600 hover:underline font-medium">
                         Unduh Template Excel
