@@ -54,6 +54,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     Route::get('/tracer/import', [TracerResponseController::class, 'importForm'])->name('tracer.import.form');
+    Route::get('/tracer/import/template', [TracerResponseController::class, 'template'])->name('tracer.import.template');
     Route::post('/tracer/import', [TracerResponseController::class, 'import'])->name('tracer.import');
 
     Route::get('/alumni/import', [AlumniController::class, 'importForm'])->name('alumni.import.form');

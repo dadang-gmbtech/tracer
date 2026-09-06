@@ -26,8 +26,13 @@
                     <p>
                         Susunan kolom mengikuti file <strong>Ekspor Data Tracer</strong> (kolom identitas, seluruh
                         kode pertanyaan f8–f1614, hingga kolom lokasi kerja) — kolom <code>f504</code> tidak
-                        dipakai. Cara termudah: unduh data saat ini, edit/tambahkan jawaban di Excel, lalu unggah
-                        kembali di sini.
+                        dipakai.
+                    </p>
+                    <p>
+                        Untuk mengisi data baru, unduh <strong>Template Excel</strong> di bawah (cuma header kolom +
+                        satu baris contoh). Untuk mengedit jawaban yang sudah ada, gunakan menu
+                        <strong>Data Tracer → Ekspor Data Tracer</strong> — file itu berisi seluruh data yang sudah
+                        tersimpan, jadi bisa besar dan lama kalau alumninya sudah banyak.
                     </p>
                     <p>
                         Setiap baris dicocokkan lewat kolom <strong>nimhsmsmh</strong> (NIM). Kalau NIM belum
@@ -39,8 +44,8 @@
                         Catatan: alumni yang dibuat lewat impor ini <strong>belum bisa login</strong> (NIM &
                         Tanggal Lahir) karena file ini tidak membawa data tanggal lahir asli.
                     </p>
-                    <a href="{{ route('export.tracer') }}" class="inline-block text-blue-600 hover:underline font-medium">
-                        Unduh Data Tracer Saat Ini (sebagai template)
+                    <a href="{{ route('tracer.import.template') }}" class="inline-block text-blue-600 hover:underline font-medium">
+                        Unduh Template Excel
                     </a>
                 </div>
 

@@ -37,6 +37,22 @@ class TracerImportTest extends TestCase
         return UploadedFile::fake()->createWithContent('tracer.csv', implode("\n", $lines));
     }
 
+    public function test_the_template_download_is_a_lightweight_file_not_the_whole_dataset(): void
+    {
+        // Regression: the import page used to link to the full data export
+        // as its "template" — confusing (it isn't one) and, for a
+        // university with thousands of alumni, unnecessarily heavy.
+        Alumni::factory()->count(3)->create();
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin Universitas');
+
+        $response = $this->actingAs($admin)->get(route('tracer.import.template'));
+
+        $response->assertOk();
+        $response->assertHeader('content-disposition', 'attachment; filename=template-data-tracer.xlsx');
+    }
+
     public function test_admin_universitas_can_bulk_update_tracer_answers(): void
     {
         $alumni = Alumni::factory()->create(['nim' => 'A1A100AAA']);

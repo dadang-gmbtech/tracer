@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Contracts\AcademicInfoServiceContract;
+use App\Exports\TracerResponsesTemplateExport;
 use App\Http\Requests\TracerFormRequest;
 use App\Imports\TracerResponsesImport;
 use App\Models\Alumni;
@@ -16,6 +17,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\URL;
 use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class TracerResponseController extends Controller
 {
@@ -69,6 +71,13 @@ class TracerResponseController extends Controller
         Gate::authorize('fill-tracer');
 
         return view('tracer.import');
+    }
+
+    public function template(): BinaryFileResponse
+    {
+        Gate::authorize('fill-tracer');
+
+        return Excel::download(new TracerResponsesTemplateExport, 'template-data-tracer.xlsx');
     }
 
     public function import(Request $request): RedirectResponse
