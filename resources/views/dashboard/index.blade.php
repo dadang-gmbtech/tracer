@@ -84,13 +84,16 @@
                     </div>
                 @endif
                 <div>
-                    <x-input-label for="jenjang" value="Jenjang" />
-                    <select id="jenjang" name="jenjang" class="mt-1 rounded-md border-gray-300 text-sm">
-                        <option value="">Semua Jenjang</option>
+                    <x-input-label value="Jenjang" />
+                    <div class="mt-1 flex gap-3 items-center h-[38px]">
                         @foreach (['D3', 'S1', 'S2', 'S3'] as $level)
-                            <option value="{{ $level }}" @selected(request('jenjang') === $level)>{{ $level }}</option>
+                            <label class="flex items-center gap-1 text-sm">
+                                <input type="checkbox" name="jenjang[]" value="{{ $level }}"
+                                       @checked(in_array($level, request('jenjang', []))) class="rounded">
+                                {{ $level }}
+                            </label>
                         @endforeach
-                    </select>
+                    </div>
                 </div>
                 <x-primary-button>Filter</x-primary-button>
             </form>
@@ -121,7 +124,9 @@
                         <form method="GET" class="flex gap-2 items-center text-sm">
                             @if(request('faculty_id')) <input type="hidden" name="faculty_id" value="{{ request('faculty_id') }}"> @endif
                             @if(request('program_study_id')) <input type="hidden" name="program_study_id" value="{{ request('program_study_id') }}"> @endif
-                            @if(request('jenjang')) <input type="hidden" name="jenjang" value="{{ request('jenjang') }}"> @endif
+                            @foreach (request('jenjang', []) as $level)
+                                <input type="hidden" name="jenjang[]" value="{{ $level }}">
+                            @endforeach
                             <input type="hidden" name="year_a" value="{{ $yearA }}">
                             <input type="hidden" name="year_b" value="{{ $yearB }}">
                             <label for="recap_year">Tahun</label>
@@ -193,7 +198,9 @@
                         <form method="GET" class="flex gap-2 items-center text-sm">
                             @if(request('faculty_id')) <input type="hidden" name="faculty_id" value="{{ request('faculty_id') }}"> @endif
                             @if(request('program_study_id')) <input type="hidden" name="program_study_id" value="{{ request('program_study_id') }}"> @endif
-                            @if(request('jenjang')) <input type="hidden" name="jenjang" value="{{ request('jenjang') }}"> @endif
+                            @foreach (request('jenjang', []) as $level)
+                                <input type="hidden" name="jenjang[]" value="{{ $level }}">
+                            @endforeach
                             <select name="year_a" class="rounded-md border-gray-300 text-sm">
                                 @foreach ($years as $y)
                                     <option value="{{ $y }}" @selected($yearA == $y)>{{ $y }}</option>

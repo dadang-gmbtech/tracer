@@ -110,9 +110,30 @@ class DashboardTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('Super Admin');
 
-        $row = app(DashboardService::class)->summary($admin, ['jenjang' => 'S1'])['data'][2024];
+        $row = app(DashboardService::class)->summary($admin, ['jenjang' => ['S1']])['data'][2024];
 
         $this->assertSame(1, $row['jumlah_alumni']);
+
+        // Selecting several levels at once (checklist) includes all of them.
+        $bothRow = app(DashboardService::class)->summary($admin, ['jenjang' => ['S1', 'D3']])['data'][2024];
+        $this->assertSame(2, $bothRow['jumlah_alumni']);
+    }
+
+    public function test_jenjang_checklist_filter_works_through_the_http_request(): void
+    {
+        $faculty = Faculty::factory()->create();
+        $s1 = StudyProgram::factory()->create(['level' => 'S1', 'faculty_id' => $faculty->id]);
+        $s2 = StudyProgram::factory()->create(['level' => 'S2', 'faculty_id' => $faculty->id]);
+
+        Alumni::factory()->create(['faculty_id' => $faculty->id, 'program_study_id' => $s1->id, 'graduation_year' => 2024]);
+        Alumni::factory()->create(['faculty_id' => $faculty->id, 'program_study_id' => $s2->id, 'graduation_year' => 2024]);
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+
+        $this->actingAs($admin)
+            ->get(route('dashboard', ['jenjang' => ['S1']]))
+            ->assertOk();
     }
 
     public function test_alumni_is_redirected_away_from_the_dashboard(): void

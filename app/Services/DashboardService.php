@@ -23,7 +23,7 @@ class DashboardService
      * Role-scoped, per-graduation-year aggregation used by the main dashboard
      * charts (see Desain Sistem Tracer Studi.pdf, "Dashboard utama").
      *
-     * @param  array{faculty_id?: int, program_study_id?: int, jenjang?: string}  $filters
+     * @param  array{faculty_id?: int, program_study_id?: int, jenjang?: list<string>}  $filters
      */
     public function summary(User $user, array $filters = []): array
     {
@@ -43,7 +43,7 @@ class DashboardService
      * Per-faculty recap for a single graduation year (rekap tracer berdasarkan
      * fakultas on the dashboard), plus a university/scope-wide total row.
      *
-     * @param  array{faculty_id?: int, program_study_id?: int, jenjang?: string}  $filters
+     * @param  array{faculty_id?: int, program_study_id?: int, jenjang?: list<string>}  $filters
      */
     public function facultyRecap(User $user, int $year, array $filters = []): array
     {
@@ -179,7 +179,7 @@ class DashboardService
         }
 
         if (! empty($filters['jenjang'])) {
-            $query->whereHas('studyProgram', fn ($q) => $q->where('level', $filters['jenjang']));
+            $query->whereHas('studyProgram', fn ($q) => $q->whereIn('level', (array) $filters['jenjang']));
         }
 
         return $query;

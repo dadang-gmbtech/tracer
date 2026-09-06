@@ -21,10 +21,12 @@ class DashboardController extends Controller
             return redirect($user->postLoginUrl());
         }
 
+        $jenjang = array_values(array_intersect((array) $request->input('jenjang', []), ['D3', 'S1', 'S2', 'S3']));
+
         $filters = array_filter([
             'faculty_id' => $request->integer('faculty_id') ?: null,
             'program_study_id' => $request->integer('program_study_id') ?: null,
-            'jenjang' => $request->string('jenjang')->trim()->value() ?: null,
+            'jenjang' => $jenjang ?: null,
         ]);
 
         $summary = $this->dashboard->summary($user, $filters);
