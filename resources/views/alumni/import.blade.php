@@ -31,9 +31,10 @@
                     </p>
                     <p>
                         Setiap baris dicocokkan lewat kolom <strong>nim</strong>, dan program studi dicocokkan lewat
-                        <strong>kodeprog</strong> — program studi tersebut harus sudah terdaftar (menu Administrasi
-                        &gt; Program Studi), kecuali file juga menyertakan kolom <code>kode_fakultas</code> /
-                        <code>nama_fakultas</code> untuk membuatkannya otomatis.
+                        <strong>kodeprog</strong>. Kalau kode prodi belum terdaftar, sistem butuh tahu fakultasnya —
+                        pilih lewat dropdown <strong>Fakultas</strong> di bawah (berlaku untuk semua baris di file
+                        ini), atau sertakan kolom <code>kode_fakultas</code> / <code>nama_fakultas</code> di file
+                        (kalau ada, ini lebih diutamakan daripada pilihan dropdown).
                     </p>
                     <p class="text-amber-700">
                         Kalau kolom <strong>tgllahir</strong> (tanggal lahir) terisi, akun login alumni (NIM &
@@ -47,6 +48,25 @@
 
                 <form method="POST" action="{{ route('alumni.import') }}" enctype="multipart/form-data" class="space-y-4">
                     @csrf
+
+                    @if ($faculties->count() > 1)
+                        <div>
+                            <x-input-label for="faculty_id" value="Fakultas (untuk prodi baru di file ini)" />
+                            <select id="faculty_id" name="faculty_id" class="mt-1 w-full rounded-md border-gray-300 text-sm">
+                                <option value="">— Otomatis dari file (kode_fakultas), kalau ada —</option>
+                                @foreach ($faculties as $faculty)
+                                    <option value="{{ $faculty->id }}" @selected(old('faculty_id') == $faculty->id)>{{ $faculty->name }}</option>
+                                @endforeach
+                            </select>
+                            <x-input-error :messages="$errors->get('faculty_id')" class="mt-1" />
+                        </div>
+                    @elseif ($faculties->count() === 1)
+                        <div>
+                            <x-input-label value="Fakultas" />
+                            <p class="mt-1 text-sm text-gray-700">{{ $faculties->first()->name }} (sesuai cakupan Anda)</p>
+                        </div>
+                    @endif
+
                     <div>
                         <x-input-label for="file" value="File Excel/CSV" />
                         <input id="file" type="file" name="file" class="mt-1 block w-full text-sm" required>

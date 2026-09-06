@@ -23,8 +23,11 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
  * also accepted (see pick()) so a template-based file works too.
  *
  * The program studi (kodeprog) must already be registered (via Admin >
- * Program Studi, or a prior Impor Data Tracer upload) UNLESS the file also
- * carries kode_fakultas/nama_fakultas, in which case a new one is created.
+ * Program Studi, or a prior Impor Data Tracer upload) unless it can be
+ * created on the fly — either the file carries kode_fakultas/nama_fakultas,
+ * or the uploader picked a faculty on the import form ($defaultFaculty),
+ * which is handy for the real export format that has no faculty columns at
+ * all: upload the file once per faculty and pick it from the dropdown.
  *
  * If tgllahir/tanggal_lahir is filled in, a login account (NIM + Tanggal
  * Lahir) is also created/updated for that alumni; leave it blank to skip
@@ -39,7 +42,10 @@ class AlumniImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
     /** @var list<array{row: int, reason: string}> */
     public array $skipped = [];
 
-    public function __construct(private readonly User $importedBy) {}
+    public function __construct(
+        private readonly User $importedBy,
+        private readonly ?Faculty $defaultFaculty = null,
+    ) {}
 
     public function collection(Collection $rows): void
     {
@@ -62,12 +68,13 @@ class AlumniImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
             }
 
             $studyProgram = StudyProgram::where('code', $prodiCode)->first();
-            $facultyCode = $this->pick($row, ['kode_fakultas', 'kodefak']);
+            $facultyCode = $this->pick($row, ['kode_fakultas', 'kodefak']) ?? $this->defaultFaculty?->code;
+            $facultyName = $this->pick($row, ['nama_fakultas', 'namafakultas']) ?? $this->defaultFaculty?->name;
 
             if (! $studyProgram && $facultyCode === null) {
                 $this->skipped[] = [
                     'row' => $line,
-                    'reason' => "NIM {$nim}: kode prodi {$prodiCode} belum terdaftar — tambahkan dulu lewat Administrasi > Program Studi, atau sertakan kolom kode_fakultas",
+                    'reason' => "NIM {$nim}: kode prodi {$prodiCode} belum terdaftar — tambahkan dulu lewat Administrasi > Program Studi, sertakan kolom kode_fakultas, atau pilih Fakultas di form impor",
                 ];
 
                 continue;
@@ -89,7 +96,7 @@ class AlumniImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
             if (! $studyProgram) {
                 $faculty = Faculty::firstOrCreate(
                     ['code' => $facultyCode],
-                    ['name' => $this->pick($row, ['nama_fakultas', 'namafakultas']) ?? $facultyCode]
+                    ['name' => $facultyName ?? $facultyCode]
                 );
 
                 $studyProgram = StudyProgram::firstOrCreate(

@@ -143,6 +143,66 @@ class AlumniImportTest extends TestCase
         $this->assertSame('2003-02-13', $user->tanggal_lahir->format('Y-m-d'));
     }
 
+    public function test_admin_universitas_can_bootstrap_a_new_program_studi_using_the_picked_faculty(): void
+    {
+        $faculty = Faculty::factory()->create(['code' => 'A', 'name' => 'Pertanian']);
+
+        $file = $this->csvFile(
+            ['nim', 'nama', 'tahunlulu', 'kodeprog', 'namajenjang', 'namaprogdikti'],
+            [[
+                'nim' => 'A0A021006',
+                'nama' => 'Contoh Empat',
+                'tahunlulu' => 2025,
+                'kodeprog' => '54401',
+                'namajenjang' => 'D3',
+                'namaprogdikti' => 'Agribisnis',
+            ]]
+        );
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin Universitas');
+
+        $response = $this->actingAs($admin)->post(route('alumni.import'), [
+            'file' => $file,
+            'faculty_id' => $faculty->id,
+        ]);
+
+        $response->assertRedirect(route('alumni.import.form'));
+        $this->assertDatabaseHas('program_studies', ['code' => '54401', 'faculty_id' => $faculty->id]);
+        $this->assertDatabaseHas('alumni', ['nim' => 'A0A021006', 'faculty_id' => $faculty->id]);
+    }
+
+    public function test_admin_fakultas_cannot_pick_another_faculty_for_the_import(): void
+    {
+        $ownFaculty = Faculty::factory()->create(['code' => 'H']);
+        $otherFaculty = Faculty::factory()->create(['code' => 'A']);
+
+        $file = $this->csvFile(
+            ['nim', 'nama', 'tahunlulu', 'kodeprog', 'namajenjang', 'namaprogdikti'],
+            [[
+                'nim' => 'A0A021007',
+                'nama' => 'Contoh Lima',
+                'tahunlulu' => 2025,
+                'kodeprog' => '54402',
+                'namajenjang' => 'D3',
+                'namaprogdikti' => 'Peternakan',
+            ]]
+        );
+
+        $admin = User::factory()->create(['faculty_id' => $ownFaculty->id]);
+        $admin->assignRole('Admin Fakultas');
+
+        // Even if a malicious/mistaken request tries to pick another faculty,
+        // the server always forces the admin's own faculty_id.
+        $this->actingAs($admin)->post(route('alumni.import'), [
+            'file' => $file,
+            'faculty_id' => $otherFaculty->id,
+        ]);
+
+        $this->assertDatabaseHas('alumni', ['nim' => 'A0A021007', 'faculty_id' => $ownFaculty->id]);
+        $this->assertDatabaseMissing('alumni', ['nim' => 'A0A021007', 'faculty_id' => $otherFaculty->id]);
+    }
+
     public function test_admin_fakultas_cannot_create_alumni_for_a_program_studi_outside_their_faculty(): void
     {
         $ownFaculty = Faculty::factory()->create(['code' => 'H']);

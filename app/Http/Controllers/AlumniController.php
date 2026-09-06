@@ -5,8 +5,11 @@ namespace App\Http\Controllers;
 use App\Exports\AlumniTemplateExport;
 use App\Imports\AlumniImport;
 use App\Models\Alumni;
+use App\Models\Faculty;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
@@ -49,11 +52,13 @@ class AlumniController extends Controller
         return view('alumni.show', ['alumni' => $alumni]);
     }
 
-    public function importForm(): View
+    public function importForm(Request $request): View
     {
         Gate::authorize('fill-tracer');
 
-        return view('alumni.import');
+        return view('alumni.import', [
+            'faculties' => $this->selectableFaculties($request->user()),
+        ]);
     }
 
     public function template(): BinaryFileResponse
@@ -67,13 +72,40 @@ class AlumniController extends Controller
     {
         Gate::authorize('fill-tracer');
 
-        $request->validate(['file' => ['required', 'file', 'mimes:xlsx,xls,csv']]);
+        $data = $request->validate([
+            'file' => ['required', 'file', 'mimes:xlsx,xls,csv'],
+            'faculty_id' => ['nullable', 'exists:faculties,id'],
+        ]);
 
-        $import = new AlumniImport($request->user());
+        $actor = $request->user();
+
+        // Admin Fakultas/Surveyor can only ever bootstrap their own faculty.
+        $facultyId = $actor->hasAnyRole(['Admin Fakultas', 'Surveyor'])
+            ? $actor->faculty_id
+            : ($data['faculty_id'] ?? null);
+
+        $import = new AlumniImport($actor, $facultyId ? Faculty::find($facultyId) : null);
         Excel::import($import, $request->file('file'));
 
         return redirect()->route('alumni.import.form')
             ->with('status', "{$import->created} alumni baru dibuat, {$import->updated} data alumni diperbarui.")
             ->with('importSkipped', $import->skipped);
+    }
+
+    /**
+     * Faculties the importing user is allowed to pick as the fallback
+     * faculty for rows whose program studi doesn't exist yet.
+     */
+    private function selectableFaculties(User $user): Collection
+    {
+        if ($user->hasAnyRole(['Super Admin', 'Admin Universitas'])) {
+            return Faculty::orderBy('name')->get();
+        }
+
+        if ($user->hasAnyRole(['Admin Fakultas', 'Surveyor']) && $user->faculty) {
+            return collect([$user->faculty]);
+        }
+
+        return collect();
     }
 }
