@@ -10,6 +10,8 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AlumniController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EmployerDashboardController;
+use App\Http\Controllers\EmployerImportController;
 use App\Http\Controllers\EmployerResponseController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\ProfileController;
@@ -25,6 +27,15 @@ Route::get('/', function () {
 Route::middleware('guest')->group(function () {
     Route::get('/login/sso', [LoginController::class, 'loginSso'])->name('login.sso');
     Route::post('/login/nim', [LoginController::class, 'loginNim'])->name('login.nim');
+});
+
+// Registered before the public signed-URL group below so these static paths
+// (auth-required) never fall through to the /pengguna-alumni/{alumni} wildcard.
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/dashboard/pengguna-alumni', [EmployerDashboardController::class, 'index'])->name('employer.dashboard');
+    Route::get('/pengguna-alumni/import', [EmployerImportController::class, 'importForm'])->name('employer.import.form');
+    Route::get('/pengguna-alumni/import/template', [EmployerImportController::class, 'template'])->name('employer.import.template');
+    Route::post('/pengguna-alumni/import', [EmployerImportController::class, 'import'])->name('employer.import');
 });
 
 // Public: Form Pengguna Alumni, no login — reached via a temporary signed link.

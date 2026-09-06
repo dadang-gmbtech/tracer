@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class EmployerResponse extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'alumni_id', 'nama_pengisi', 'jabatan', 'nama_perusahaan',
         'alamat_perusahaan', 'no_telp',

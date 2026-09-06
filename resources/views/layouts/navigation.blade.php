@@ -24,6 +24,9 @@
                         <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                             {{ __('Dashboard') }}
                         </x-nav-link>
+                        <x-nav-link :href="route('employer.dashboard')" :active="request()->routeIs('employer.dashboard')">
+                            {{ __('Pengguna Alumni') }}
+                        </x-nav-link>
                     @endunless
 
                     @if ($canViewAlumni)
@@ -49,6 +52,7 @@
                             <x-slot name="content">
                                 @if ($canImportTracer)
                                     <x-dropdown-link :href="route('tracer.import.form')">Impor Data Tracer (Excel)</x-dropdown-link>
+                                    <x-dropdown-link :href="route('employer.import.form')">Impor Data Pengguna Alumni (Excel)</x-dropdown-link>
                                 @endif
                                 @if ($canExport)
                                     <x-dropdown-link :href="route('export.tracer')">Ekspor Data Tracer (Excel)</x-dropdown-link>
@@ -132,6 +136,7 @@
         <div class="pt-2 pb-3 space-y-1">
             @unless ($isAlumni)
                 <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">{{ __('Dashboard') }}</x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('employer.dashboard')" :active="request()->routeIs('employer.dashboard')">{{ __('Pengguna Alumni') }}</x-responsive-nav-link>
             @endunless
             @if ($canViewAlumni)
                 <x-responsive-nav-link :href="route('alumni.index')" :active="request()->routeIs('alumni.*')">{{ __('Alumni') }}</x-responsive-nav-link>
@@ -142,6 +147,7 @@
             @if ($canImportTracer)
                 <x-responsive-nav-link :href="route('tracer.import.form')">Impor Data Tracer</x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('alumni.import.form')">Impor Data Alumni</x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('employer.import.form')">Impor Data Pengguna Alumni</x-responsive-nav-link>
             @endif
             @if ($canManageUsers)
                 <x-responsive-nav-link :href="route('admin.users.index')">Manajemen User</x-responsive-nav-link>
