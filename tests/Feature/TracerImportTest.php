@@ -143,6 +143,37 @@ class TracerImportTest extends TestCase
         $this->assertDatabaseHas('program_studies', ['code' => '55201', 'name' => 'Informatika']);
     }
 
+    public function test_an_implausible_kodefak_value_is_ignored_in_favor_of_guessing_from_the_nim(): void
+    {
+        // A misaligned column in a real export once put a student's email
+        // address in kodefak — trusting it at face value created a garbage
+        // faculty (see FacultyCodeGuesser::normalize()). It should be
+        // rejected and fall through to the NIM-based guess instead.
+        Faculty::factory()->create(['code' => 'H', 'name' => 'Teknik']);
+
+        $file = $this->csvFile([[
+            'nimhsmsmh' => 'H1D019099',
+            'nmmhsmsmh' => 'Contoh Kodefak Rusak',
+            'tahun_lulus' => 2024,
+            'kodefak' => 'someone@mhs.unsoed.ac.id',
+            'kodeprog' => '55201',
+            'namajenjang' => 'S1',
+            'namaprogdikti' => 'Informatika',
+            'f8' => 1,
+        ]]);
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin Universitas');
+
+        $this->actingAs($admin)->post(route('tracer.import'), ['file' => $file]);
+
+        $this->assertDatabaseHas('alumni', [
+            'nim' => 'H1D019099',
+            'faculty_id' => Faculty::where('code', 'H')->value('id'),
+        ]);
+        $this->assertDatabaseMissing('faculties', ['code' => 'someone@mhs.unsoed.ac.id']);
+    }
+
     public function test_admin_fakultas_cannot_import_tracer_data_for_alumni_outside_their_faculty(): void
     {
         $ownFaculty = Faculty::factory()->create();

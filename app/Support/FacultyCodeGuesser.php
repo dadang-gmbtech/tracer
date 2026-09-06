@@ -64,6 +64,13 @@ class FacultyCodeGuesser
      * faculty instead of reusing the existing one for that code. Strips all
      * whitespace (not just the ends) and uppercases, so "A", " A", "a\r",
      * "A\u{A0}" all collapse to the same "A".
+     *
+     * Also rejects values that couldn't possibly be a real faculty code
+     * (returning null instead) — a misaligned column in a source file has
+     * been seen putting a student's full email address in kodefak, which
+     * would otherwise get accepted at face value and create a garbage
+     * faculty. A rejected value falls through to the NIM-based guess
+     * instead, same as a genuinely blank column.
      */
     public static function normalize(?string $code): ?string
     {
@@ -73,6 +80,10 @@ class FacultyCodeGuesser
 
         $normalized = preg_replace('/[\s\x{00A0}]+/u', '', $code);
 
-        return $normalized === '' ? null : strtoupper($normalized);
+        if ($normalized === '' || str_contains($normalized, '@') || mb_strlen($normalized) > 10) {
+            return null;
+        }
+
+        return strtoupper($normalized);
     }
 }

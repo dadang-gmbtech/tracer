@@ -16,11 +16,17 @@ use App\Support\FacultyCodeGuesser;
 class AlumniProvisioningService
 {
     /**
+     * faculty_code is trusted as-is here — the caller (TracerResponsesImport)
+     * has already run it through FacultyCodeGuesser::normalize(), which both
+     * cleans up formatting noise and rejects implausible values (e.g. an
+     * email address from a misaligned column) before ever reaching this
+     * point.
+     *
      * @param  array{nama?: ?string, email?: ?string, faculty_code: string, faculty_name?: ?string, prodi_code: string, prodi_name?: ?string, prodi_level?: ?string, graduation_year?: ?int, nik?: ?string, npwp?: ?string, phone?: ?string}  $identity
      */
     public function findOrCreate(string $nim, array $identity): Alumni
     {
-        $facultyCode = FacultyCodeGuesser::normalize($identity['faculty_code']) ?? $identity['faculty_code'];
+        $facultyCode = $identity['faculty_code'];
 
         $faculty = Faculty::firstOrCreate(
             ['code' => $facultyCode],
