@@ -70,7 +70,7 @@ class TracerImportTest extends TestCase
         $this->assertNotContains('f504', TracerFieldCodes::codes());
     }
 
-    public function test_row_with_unknown_nim_is_skipped_and_reported(): void
+    public function test_unknown_nim_without_faculty_info_is_skipped_and_reported(): void
     {
         $file = $this->csvFile([['nimhsmsmh' => 'TIDAKADA123', 'f8' => 1]]);
 
@@ -83,6 +83,37 @@ class TracerImportTest extends TestCase
         $response->assertSessionHas('importSkipped', function (array $skipped) {
             return count($skipped) === 1 && str_contains($skipped[0]['reason'], 'TIDAKADA123');
         });
+        $this->assertDatabaseMissing('alumni', ['nim' => 'TIDAKADA123']);
+    }
+
+    public function test_admin_universitas_can_bootstrap_a_new_alumni_and_its_faculty_from_a_full_row(): void
+    {
+        $file = $this->csvFile([[
+            'nimhsmsmh' => 'A1A300CCC',
+            'nmmhsmsmh' => 'Contoh Alumni Baru',
+            'emailmsmh' => 'contoh@example.com',
+            'tahun_lulus' => 2024,
+            'kodefak' => 'H',
+            'namafakultas' => 'Teknik',
+            'kodeprog' => '55201',
+            'namajenjang' => 'S1',
+            'namaprogdikti' => 'Informatika',
+            'f8' => 1,
+        ]]);
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin Universitas');
+
+        $response = $this->actingAs($admin)->post(route('tracer.import'), ['file' => $file]);
+
+        $response->assertRedirect(route('tracer.import.form'));
+        $this->assertDatabaseHas('alumni', ['nim' => 'A1A300CCC', 'nama' => 'Contoh Alumni Baru']);
+        $this->assertDatabaseHas('faculties', ['code' => 'H', 'name' => 'Teknik']);
+        $this->assertDatabaseHas('program_studies', ['code' => '55201', 'name' => 'Informatika']);
+        $this->assertDatabaseHas('tracer_responses', ['f8' => 1]);
+
+        // No real tanggal_lahir is available from this format, so no login account is created.
+        $this->assertDatabaseMissing('users', ['nim' => 'A1A300CCC']);
     }
 
     public function test_admin_fakultas_cannot_import_tracer_data_for_alumni_outside_their_faculty(): void
@@ -99,5 +130,29 @@ class TracerImportTest extends TestCase
         $this->actingAs($admin)->post(route('tracer.import'), ['file' => $file]);
 
         $this->assertDatabaseMissing('tracer_responses', ['alumni_id' => $alumni->id]);
+    }
+
+    public function test_admin_fakultas_cannot_bootstrap_a_new_alumni_for_another_faculty(): void
+    {
+        $ownFaculty = Faculty::factory()->create(['code' => 'H']);
+
+        $file = $this->csvFile([[
+            'nimhsmsmh' => 'A1A400DDD',
+            'kodefak' => 'X', // not the admin's own faculty code
+            'namafakultas' => 'Fakultas Lain',
+            'kodeprog' => '99999',
+            'namaprogdikti' => 'Prodi Lain',
+            'f8' => 1,
+        ]]);
+
+        $admin = User::factory()->create(['faculty_id' => $ownFaculty->id]);
+        $admin->assignRole('Admin Fakultas');
+
+        $response = $this->actingAs($admin)->post(route('tracer.import'), ['file' => $file]);
+
+        $response->assertSessionHas('importSkipped', function (array $skipped) {
+            return count($skipped) === 1 && str_contains($skipped[0]['reason'], 'A1A400DDD');
+        });
+        $this->assertDatabaseMissing('alumni', ['nim' => 'A1A400DDD']);
     }
 }

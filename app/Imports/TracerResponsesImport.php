@@ -4,7 +4,9 @@ namespace App\Imports;
 
 use App\Models\Alumni;
 use App\Models\City;
+use App\Models\Faculty;
 use App\Models\Province;
+use App\Models\StudyProgram;
 use App\Models\User;
 use App\Support\TracerFieldCodes;
 use App\Support\TracerValueParser;
@@ -14,14 +16,23 @@ use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
 /**
- * Bulk-updates tracer_responses for alumni that already exist in the system,
- * matched by NIM (nimhsmsmh). Column set mirrors TracerResponsesExport
- * exactly (minus f504), so an exported file can be edited and re-uploaded
- * as-is. Identity/master-data columns (kdptimsmh, namafakultas, kodeprog,
- * etc.) are accepted but ignored — they're informational only in the export.
+ * Bulk-updates tracer_responses matched by NIM (nimhsmsmh). If the NIM isn't
+ * registered yet, the alumni (and its faculty/program studi, if new) is
+ * created from the identity columns in the same row — the row carries the
+ * full national export format (kdptimsmh..npwp, kodefak..namaprogdikti), so
+ * one upload can bootstrap alumni data and their tracer answers together.
+ *
+ * Note: this never creates a User login account (no real tanggal_lahir is
+ * available from this format) — alumni created this way can't log in via
+ * NIM+DOB until a real academic-system integration or an admin sets one.
+ *
+ * Column set otherwise mirrors TracerResponsesExport exactly (minus f504),
+ * so an exported file can be edited and re-uploaded as-is.
  */
 class TracerResponsesImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
 {
+    public int $created = 0;
+
     public int $updated = 0;
 
     /** @var list<array{row: int, reason: string}> */
@@ -42,17 +53,28 @@ class TracerResponsesImport implements SkipsEmptyRows, ToCollection, WithHeading
             }
 
             $alumni = Alumni::where('nim', $nim)->first();
+            $isNew = $alumni === null;
 
-            if (! $alumni) {
-                $this->skipped[] = ['row' => $line, 'reason' => "NIM {$nim} tidak ditemukan"];
+            if ($alumni) {
+                if (! $this->importedBy->can('fillTracer', $alumni)) {
+                    $this->skipped[] = ['row' => $line, 'reason' => "NIM {$nim} di luar cakupan Anda"];
 
-                continue;
-            }
+                    continue;
+                }
+            } else {
+                if (! $this->authorizedForRow($row)) {
+                    $this->skipped[] = ['row' => $line, 'reason' => "NIM {$nim} (baru) di luar cakupan Anda"];
 
-            if (! $this->importedBy->can('fillTracer', $alumni)) {
-                $this->skipped[] = ['row' => $line, 'reason' => "NIM {$nim} di luar cakupan Anda"];
+                    continue;
+                }
 
-                continue;
+                $alumni = $this->findOrCreateAlumni($nim, $row);
+
+                if (! $alumni) {
+                    $this->skipped[] = ['row' => $line, 'reason' => "NIM {$nim}: data fakultas/prodi tidak lengkap"];
+
+                    continue;
+                }
             }
 
             $data = $this->mapRow($row);
@@ -60,8 +82,73 @@ class TracerResponsesImport implements SkipsEmptyRows, ToCollection, WithHeading
             $data['submitted_at'] = TracerValueParser::date($row['waktu_update'] ?? null) ?? now();
 
             $alumni->tracerResponse()->updateOrCreate(['alumni_id' => $alumni->id], $data);
-            $this->updated++;
+            $isNew ? $this->created++ : $this->updated++;
         }
+    }
+
+    /**
+     * Whether the importing user may create a brand-new alumni for this row,
+     * based on the row's own kodefak/kodeprog against the actor's scope
+     * (an existing alumni's own faculty/prodi is checked via the fillTracer
+     * policy instead — see collection() above).
+     */
+    private function authorizedForRow(Collection $row): bool
+    {
+        $actor = $this->importedBy;
+
+        if ($actor->hasAnyRole(['Super Admin', 'Admin Universitas'])) {
+            return true;
+        }
+
+        if ($actor->hasRole('Admin Prodi')) {
+            return $actor->studyProgram && $actor->studyProgram->code === TracerValueParser::str($row['kodeprog'] ?? null);
+        }
+
+        if ($actor->hasAnyRole(['Admin Fakultas', 'Surveyor'])) {
+            return $actor->faculty && $actor->faculty->code === TracerValueParser::str($row['kodefak'] ?? null);
+        }
+
+        return false;
+    }
+
+    private function findOrCreateAlumni(string $nim, Collection $row): ?Alumni
+    {
+        $facultyCode = TracerValueParser::str($row['kodefak'] ?? null);
+        $prodiCode = TracerValueParser::str($row['kodeprog'] ?? null);
+
+        if ($facultyCode === null || $prodiCode === null) {
+            return null;
+        }
+
+        $faculty = Faculty::firstOrCreate(
+            ['code' => $facultyCode],
+            ['name' => TracerValueParser::str($row['namafakultas'] ?? null) ?? $facultyCode]
+        );
+
+        $studyProgram = StudyProgram::firstOrCreate(
+            ['code' => $prodiCode],
+            [
+                'faculty_id' => $faculty->id,
+                'name' => TracerValueParser::str($row['namaprogdikti'] ?? null) ?? $prodiCode,
+                'level' => TracerValueParser::str($row['namajenjang'] ?? null) ?? '-',
+            ]
+        );
+
+        $email = TracerValueParser::str($row['emailmsmh'] ?? null) ?? TracerValueParser::str($row['emailunsoed'] ?? null);
+
+        return Alumni::updateOrCreate(
+            ['nim' => $nim],
+            [
+                'nama' => TracerValueParser::str($row['nmmhsmsmh'] ?? null) ?? $nim,
+                'email' => $email,
+                'faculty_id' => $faculty->id,
+                'program_study_id' => $studyProgram->id,
+                'graduation_year' => TracerValueParser::int($row['tahun_lulus'] ?? null),
+                'nik' => TracerValueParser::str($row['nik'] ?? null),
+                'npwp' => TracerValueParser::str($row['npwp'] ?? null),
+                'phone' => TracerValueParser::str($row['telpomsmh'] ?? null),
+            ]
+        );
     }
 
     private function mapRow(Collection $row): array

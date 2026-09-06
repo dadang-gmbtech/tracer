@@ -81,7 +81,7 @@ class TracerResponseController extends Controller
         Excel::import($import, $request->file('file'));
 
         return redirect()->route('tracer.import.form')
-            ->with('status', "{$import->updated} data tracer studi berhasil diperbarui.")
+            ->with('status', "{$import->created} alumni baru dibuat, {$import->updated} data tracer studi diperbarui.")
             ->with('importSkipped', $import->skipped);
     }
 }

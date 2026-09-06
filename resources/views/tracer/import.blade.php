@@ -30,9 +30,14 @@
                         kembali di sini.
                     </p>
                     <p>
-                        Setiap baris dicocokkan lewat kolom <strong>nimhsmsmh</strong> (NIM) ke data alumni yang
-                        sudah ada — baris dengan NIM yang tidak ditemukan, atau di luar cakupan Anda, akan
-                        dilewati dan dilaporkan.
+                        Setiap baris dicocokkan lewat kolom <strong>nimhsmsmh</strong> (NIM). Kalau NIM belum
+                        terdaftar, data alumni (beserta fakultas/prodi kalau belum ada) akan <strong>dibuat
+                        otomatis</strong> dari kolom identitas di baris yang sama (kdptimsmh s.d. namaprogdikti),
+                        lalu jawaban tracer-nya disimpan. Baris di luar cakupan Anda akan dilewati dan dilaporkan.
+                    </p>
+                    <p class="text-amber-700">
+                        Catatan: alumni yang dibuat lewat impor ini <strong>belum bisa login</strong> (NIM &
+                        Tanggal Lahir) karena file ini tidak membawa data tanggal lahir asli.
                     </p>
                     <a href="{{ route('export.tracer') }}" class="inline-block text-blue-600 hover:underline font-medium">
                         Unduh Data Tracer Saat Ini (sebagai template)
