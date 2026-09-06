@@ -86,6 +86,27 @@ class TracerImportTest extends TestCase
         $this->assertDatabaseMissing('alumni', ['nim' => 'TIDAKADA123']);
     }
 
+    public function test_reported_row_numbers_account_for_the_heading_row_and_chunked_reading(): void
+    {
+        // Row numbers come from the chunk-reading offset (see
+        // TracerResponsesImport::chunkSize()), not a plain array index —
+        // this guards against that offset math being wrong.
+        $file = $this->csvFile([
+            ['nimhsmsmh' => 'A1A100AAA', 'f8' => 1],
+            ['nimhsmsmh' => 'TIDAKADA999', 'f8' => 1],
+        ]);
+        Alumni::factory()->create(['nim' => 'A1A100AAA']);
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin Universitas');
+
+        $response = $this->actingAs($admin)->post(route('tracer.import'), ['file' => $file]);
+
+        $response->assertSessionHas('importSkipped', function (array $skipped) {
+            return count($skipped) === 1 && $skipped[0]['row'] === 3;
+        });
+    }
+
     public function test_admin_universitas_can_bootstrap_a_new_alumni_and_its_faculty_from_a_full_row(): void
     {
         $file = $this->csvFile([[

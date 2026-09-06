@@ -15,8 +15,10 @@ use App\Support\TracerFieldCodes;
 use App\Support\TracerValueParser;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Concerns\RemembersChunkOffset;
 use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
 use Maatwebsite\Excel\Concerns\ToCollection;
+use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
 /**
@@ -33,11 +35,18 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
  * Column set otherwise mirrors TracerResponsesExport exactly (minus f504),
  * so an exported file can be edited and re-uploaded as-is.
  *
- * Performance: alumni/study-program/faculty/province/city lookups are all
- * preloaded once before the loop (provinces/cities are small tables, loaded
- * in full; alumni/prodi are loaded only for the codes present in the file) —
+ * Performance: alumni/study-program/faculty/province/city lookups are
+ * preloaded once per chunk (provinces/cities are small tables, loaded in
+ * full; alumni/prodi are loaded only for the codes present in that chunk) —
  * without this, a several-thousand-row file turns into tens of thousands of
  * individual queries.
+ *
+ * Reads the file in chunks (see WithChunkReading below) instead of loading
+ * it whole: a large real-world export made PhpSpreadsheet exceed PHP's
+ * memory_limit trying to hold the entire file in memory at once. Chunking
+ * keeps peak memory bounded regardless of file size, at the cost of
+ * re-running the per-chunk preload queries above once per chunk instead of
+ * once for the whole file — still far cheaper than one query per row.
  *
  * Each row's writes run inside their own transaction, not one transaction
  * for the whole file: on Postgres a single failed row (e.g. a NOT NULL or
@@ -45,8 +54,10 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
  * back every other row too. A bad row is skipped and reported instead of
  * failing the whole import.
  */
-class TracerResponsesImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
+class TracerResponsesImport implements SkipsEmptyRows, ToCollection, WithChunkReading, WithHeadingRow
 {
+    use RemembersChunkOffset;
+
     public int $created = 0;
 
     public int $updated = 0;
@@ -55,6 +66,11 @@ class TracerResponsesImport implements SkipsEmptyRows, ToCollection, WithHeading
     public array $skipped = [];
 
     public function __construct(private readonly User $importedBy) {}
+
+    public function chunkSize(): int
+    {
+        return 500;
+    }
 
     public function collection(Collection $rows): void
     {
@@ -72,7 +88,10 @@ class TracerResponsesImport implements SkipsEmptyRows, ToCollection, WithHeading
         $citiesByProvinceAndName = $cities->keyBy(fn (City $c) => $c->province_id.'|'.$c->name);
 
         foreach ($rows as $index => $row) {
-            $line = $index + 2; // 0-based collection index + 1 for the heading row
+            // getChunkOffset() is the file row number this chunk starts at (already
+            // accounts for the heading row); null only outside chunked reading (e.g. tests
+            // that call collection() directly), where row 2 is the first data row.
+            $line = ($this->getChunkOffset() ?? 2) + $index;
 
             try {
                 DB::transaction(fn () => $this->importRow(

@@ -4,8 +4,8 @@ namespace App\Exports;
 
 use App\Support\TracerFieldCodes;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
-use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\FromQuery;
+use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 
@@ -13,14 +13,30 @@ use Maatwebsite\Excel\Concerns\WithMapping;
  * Column order matches Contoh data.csv (the national Kemdiktisaintek tracer
  * export), minus f504, so the file can be edited and re-imported via
  * TracerResponsesImport.
+ *
+ * Reads via FromQuery + WithChunkReading rather than loading every matching
+ * alumni into memory at once (FromCollection) — a university-wide export
+ * with thousands of alumni exceeded PHP's memory_limit building the whole
+ * result set (with its eager-loaded relations) in memory before handing it
+ * to the writer.
  */
-class TracerResponsesExport implements FromCollection, WithHeadings, WithMapping
+class TracerResponsesExport implements FromQuery, WithChunkReading, WithHeadings, WithMapping
 {
     public function __construct(private readonly Builder $alumniQuery) {}
 
-    public function collection(): Collection
+    public function query(): Builder
     {
-        return $this->alumniQuery->with(['faculty', 'studyProgram', 'tracerResponse.workProvince', 'tracerResponse.workCity'])->get();
+        // orderBy('id') is required for chunked pagination to be safe (see
+        // FromQuery's docblock) — without a unique, deterministic order,
+        // LIMIT/OFFSET paging can skip or duplicate rows across chunks.
+        return $this->alumniQuery
+            ->with(['faculty', 'studyProgram', 'tracerResponse.workProvince', 'tracerResponse.workCity'])
+            ->orderBy('id');
+    }
+
+    public function chunkSize(): int
+    {
+        return 500;
     }
 
     public function headings(): array

@@ -3,18 +3,29 @@
 namespace App\Exports;
 
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
-use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\FromQuery;
+use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 
-class AlumniExport implements FromCollection, WithHeadings, WithMapping
+/**
+ * Reads via FromQuery + WithChunkReading rather than loading every matching
+ * alumni into memory at once — see TracerResponsesExport for why.
+ */
+class AlumniExport implements FromQuery, WithChunkReading, WithHeadings, WithMapping
 {
     public function __construct(private readonly Builder $alumniQuery) {}
 
-    public function collection(): Collection
+    public function query(): Builder
     {
-        return $this->alumniQuery->with(['faculty', 'studyProgram', 'tracerResponse'])->get();
+        // orderBy('id') is required for chunked pagination to be safe (see
+        // FromQuery's docblock).
+        return $this->alumniQuery->with(['faculty', 'studyProgram', 'tracerResponse'])->orderBy('id');
+    }
+
+    public function chunkSize(): int
+    {
+        return 500;
     }
 
     public function headings(): array
