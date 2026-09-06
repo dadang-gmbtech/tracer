@@ -74,34 +74,49 @@ class EmployerDashboardService
     }
 
     /**
-     * Overall satisfaction index (average across all 7 questions) per
-     * selected faculty per year — used to overlay one line per faculty on
-     * the "Indeks per Pertanyaan per Tahun" chart so faculties can be
-     * compared directly, in place of its default per-question breakdown.
+     * Per-question index (Kerja Sama Tim, Bahasa Asing, ...) for each
+     * selected faculty across years — lets faculties be compared on a
+     * specific competency (e.g. "Bahasa Asing: Pertanian vs Teknik") rather
+     * than collapsed into one blended score that would hide exactly the
+     * kind of difference this comparison is meant to surface.
      *
      * @param  list<int>  $facultyIds
      * @param  array{faculty_id?: int, program_study_id?: int}  $filters
+     * @return array{years: list<int>, per_pertanyaan: array<string, array{label: string, series: array<string, array<int, float>>}>}
      */
     public function indeksPerFacultyPerYear(User $user, array $facultyIds, array $filters = []): array
     {
         $responses = $this->scopedResponses($user, $filters)->get();
         $years = $this->yearRange($responses);
 
-        $series = [];
+        $facultyResponses = [];
+        $facultyNames = [];
 
         foreach ($facultyIds as $facultyId) {
-            $facultyResponses = $responses->filter(fn (EmployerResponse $r) => $r->alumni->faculty_id === $facultyId);
-            $name = $facultyResponses->first()?->alumni?->faculty?->name ?? Faculty::find($facultyId)?->name ?? '-';
-
-            $series[$name] = [];
-
-            foreach ($years as $year) {
-                $yearResponses = $facultyResponses->filter(fn (EmployerResponse $r) => (int) $r->alumni->graduation_year === $year);
-                $series[$name][$year] = $this->aggregateFor($yearResponses)['indeks_keseluruhan'];
-            }
+            $filtered = $responses->filter(fn (EmployerResponse $r) => $r->alumni->faculty_id === $facultyId);
+            $facultyResponses[$facultyId] = $filtered;
+            $facultyNames[$facultyId] = $filtered->first()?->alumni?->faculty?->name ?? Faculty::find($facultyId)?->name ?? '-';
         }
 
-        return ['years' => $years, 'series' => $series];
+        $perQuestion = [];
+
+        foreach (self::QUESTIONS as $field => $label) {
+            $series = [];
+
+            foreach ($facultyIds as $facultyId) {
+                $name = $facultyNames[$facultyId];
+                $series[$name] = [];
+
+                foreach ($years as $year) {
+                    $yearResponses = $facultyResponses[$facultyId]->filter(fn (EmployerResponse $r) => (int) $r->alumni->graduation_year === $year);
+                    $series[$name][$year] = $this->aggregateFor($yearResponses)['per_pertanyaan'][$field]['indeks'];
+                }
+            }
+
+            $perQuestion[$field] = ['label' => $label, 'series' => $series];
+        }
+
+        return ['years' => $years, 'per_pertanyaan' => $perQuestion];
     }
 
     /**

@@ -27,23 +27,30 @@
         'tension' => 0.3,
     ])->values()->all());
 
-    $facultyComparisonConfig = null;
+    $facultyComparisonConfigs = [];
     if ($facultyComparison) {
         $fcYears = $facultyComparison['years'];
         $fcLabels = array_map(fn ($y) => (string) $y, $fcYears);
-        $facultyComparisonConfig = [
-            'type' => 'line',
-            'data' => [
-                'labels' => $fcLabels,
-                'datasets' => collect($facultyComparison['series'])->map(fn ($byYear, $name) => [
-                    'label' => $name,
-                    'data' => array_map(fn ($y) => $byYear[$y], $fcYears),
-                    'borderColor' => $palette[array_search($name, array_keys($facultyComparison['series'])) % count($palette)],
-                    'tension' => 0.3,
-                ])->values()->all(),
-            ],
-            'options' => ['responsive' => true, 'maintainAspectRatio' => false],
-        ];
+
+        foreach ($facultyComparison['per_pertanyaan'] as $field => $question) {
+            $facultyNames = array_keys($question['series']);
+            $facultyComparisonConfigs[$field] = [
+                'label' => $question['label'],
+                'config' => [
+                    'type' => 'line',
+                    'data' => [
+                        'labels' => $fcLabels,
+                        'datasets' => collect($question['series'])->map(fn ($byYear, $name) => [
+                            'label' => $name,
+                            'data' => array_map(fn ($y) => $byYear[$y], $fcYears),
+                            'borderColor' => $palette[array_search($name, $facultyNames) % count($palette)],
+                            'tension' => 0.3,
+                        ])->values()->all(),
+                    ],
+                    'options' => ['responsive' => true, 'maintainAspectRatio' => false],
+                ],
+            ];
+        }
     }
 @endphp
 
@@ -119,8 +126,12 @@
                     <x-chart-card title="Indeks Kepuasan per Tahun" :config="$indeksTrenConfig" />
                 </div>
 
-                @if ($facultyComparisonConfig)
-                    <x-chart-card title="Perbandingan Indeks Keseluruhan Antar Fakultas per Tahun" :config="$facultyComparisonConfig" height="360px" />
+                @if ($facultyComparisonConfigs)
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        @foreach ($facultyComparisonConfigs as $c)
+                            <x-chart-card :title="'Perbandingan Fakultas — '.$c['label']" :config="$c['config']" />
+                        @endforeach
+                    </div>
                 @else
                     <x-chart-card title="Indeks per Pertanyaan per Tahun" :config="$perPertanyaanConfig" height="360px" />
                 @endif

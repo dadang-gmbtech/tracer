@@ -159,8 +159,10 @@ class EmployerDashboardTest extends TestCase
 
         $comparison = app(EmployerDashboardService::class)->indeksPerFacultyPerYear($admin, [$facultyA->id, $facultyB->id]);
 
-        $this->assertSame(100.0, $comparison['series']['Fakultas A'][2024]);
-        $this->assertSame(0.0, $comparison['series']['Fakultas B'][2024]);
+        $this->assertSame(100.0, $comparison['per_pertanyaan']['q5_bahasa_asing']['series']['Fakultas A'][2024]);
+        $this->assertSame(0.0, $comparison['per_pertanyaan']['q5_bahasa_asing']['series']['Fakultas B'][2024]);
+        $this->assertSame(100.0, $comparison['per_pertanyaan']['q1_kerja_sama_tim']['series']['Fakultas A'][2024]);
+        $this->assertSame(0.0, $comparison['per_pertanyaan']['q1_kerja_sama_tim']['series']['Fakultas B'][2024]);
     }
 
     public function test_checking_faculties_switches_the_dashboard_to_the_comparison_chart(): void
@@ -175,7 +177,8 @@ class EmployerDashboardTest extends TestCase
         $this->actingAs($admin)
             ->get(route('employer.dashboard', ['compare_faculty_ids' => [$facultyA->id]]))
             ->assertOk()
-            ->assertSee('Perbandingan Indeks Keseluruhan Antar Fakultas per Tahun')
+            ->assertSee('Perbandingan Fakultas — Bahasa Asing')
+            ->assertSee('Perbandingan Fakultas — Kerja Sama Tim')
             ->assertDontSee('Indeks per Pertanyaan per Tahun');
     }
 
