@@ -83,8 +83,8 @@ class EmployerDashboardTest extends TestCase
     {
         $facultyA = Faculty::factory()->create(['name' => 'Fakultas A']);
         $facultyB = Faculty::factory()->create(['name' => 'Fakultas B']);
-        $alumniA = Alumni::factory()->create(['faculty_id' => $facultyA->id]);
-        $alumniB = Alumni::factory()->create(['faculty_id' => $facultyB->id]);
+        $alumniA = Alumni::factory()->create(['faculty_id' => $facultyA->id, 'graduation_year' => 2024]);
+        $alumniB = Alumni::factory()->create(['faculty_id' => $facultyB->id, 'graduation_year' => 2024]);
         EmployerResponse::factory()->create(['alumni_id' => $alumniA->id]);
         EmployerResponse::factory()->create(['alumni_id' => $alumniB->id]);
 
@@ -99,20 +99,42 @@ class EmployerDashboardTest extends TestCase
             ->assertSee('Fakultas B');
     }
 
+    public function test_faculty_recap_is_scoped_to_the_selected_year(): void
+    {
+        $faculty = Faculty::factory()->create();
+        $alumni2023 = Alumni::factory()->create(['faculty_id' => $faculty->id, 'graduation_year' => 2023]);
+        $alumni2024 = Alumni::factory()->create(['faculty_id' => $faculty->id, 'graduation_year' => 2024]);
+        EmployerResponse::factory()->create(['alumni_id' => $alumni2023->id]);
+        EmployerResponse::factory()->create(['alumni_id' => $alumni2024->id]);
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+
+        $recap2023 = app(EmployerDashboardService::class)->facultyRecap($admin, 2023);
+        $recap2024 = app(EmployerDashboardService::class)->facultyRecap($admin, 2024);
+
+        $this->assertSame(1, $recap2023['total']['jumlah_respon']);
+        $this->assertSame(1, $recap2024['total']['jumlah_respon']);
+
+        $this->actingAs($admin)
+            ->get(route('employer.dashboard', ['recap_year' => 2023]))
+            ->assertOk();
+    }
+
     public function test_faculty_recap_only_lists_faculties_within_scope(): void
     {
         $ownFaculty = Faculty::factory()->create();
         $otherFaculty = Faculty::factory()->create();
 
-        $ownAlumni = Alumni::factory()->create(['faculty_id' => $ownFaculty->id]);
-        $otherAlumni = Alumni::factory()->create(['faculty_id' => $otherFaculty->id]);
+        $ownAlumni = Alumni::factory()->create(['faculty_id' => $ownFaculty->id, 'graduation_year' => 2024]);
+        $otherAlumni = Alumni::factory()->create(['faculty_id' => $otherFaculty->id, 'graduation_year' => 2024]);
         EmployerResponse::factory()->create(['alumni_id' => $ownAlumni->id]);
         EmployerResponse::factory()->create(['alumni_id' => $otherAlumni->id]);
 
         $admin = User::factory()->create(['faculty_id' => $ownFaculty->id]);
         $admin->assignRole('Admin Fakultas');
 
-        $recap = app(EmployerDashboardService::class)->facultyRecap($admin);
+        $recap = app(EmployerDashboardService::class)->facultyRecap($admin, 2024);
 
         $this->assertSame(1, $recap['total']['jumlah_respon']);
     }

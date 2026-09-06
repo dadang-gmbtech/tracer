@@ -52,9 +52,10 @@ class EmployerDashboardService
     /**
      * @param  array{faculty_id?: int, program_study_id?: int}  $filters
      */
-    public function facultyRecap(User $user, array $filters = []): array
+    public function facultyRecap(User $user, int $year, array $filters = []): array
     {
-        $responses = $this->scopedResponses($user, $filters)->get();
+        $responses = $this->scopedResponses($user, $filters)->get()
+            ->filter(fn (EmployerResponse $r) => (int) $r->alumni->graduation_year === $year);
 
         $rows = $responses->groupBy(fn (EmployerResponse $r) => $r->alumni->faculty_id)
             ->map(fn (Collection $group) => [
@@ -65,6 +66,7 @@ class EmployerDashboardService
             ->values();
 
         return [
+            'year' => $year,
             'rows' => $rows,
             'total' => $this->aggregateFor($responses),
         ];

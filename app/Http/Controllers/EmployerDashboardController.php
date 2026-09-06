@@ -31,9 +31,14 @@ class EmployerDashboardController extends Controller
 
         $isUniversityScoped = $user->hasAnyRole(['Super Admin', 'Admin Universitas', 'Pimpinan Universitas']);
 
+        $summary = $this->dashboard->summary($user, $filters);
+        $years = $summary['years'];
+        $recapYear = (int) ($request->integer('recap_year') ?: (count($years) ? end($years) : now()->year));
+
         return view('employer.dashboard', [
-            'summary' => $this->dashboard->summary($user, $filters),
-            'facultyRecap' => $this->dashboard->facultyRecap($user, $filters),
+            'summary' => $summary,
+            'facultyRecap' => $this->dashboard->facultyRecap($user, $recapYear, $filters),
+            'recapYear' => $recapYear,
             'faculties' => $isUniversityScoped ? Faculty::orderBy('name')->get() : collect(),
             'programStudies' => $isUniversityScoped ? StudyProgram::orderBy('name')->get() : collect(),
         ]);

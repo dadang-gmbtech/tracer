@@ -88,9 +88,22 @@
 
                 <x-chart-card title="Indeks per Pertanyaan per Tahun" :config="$perPertanyaanConfig" height="360px" />
 
-                @if ($facultyRecap['rows']->count() > 1)
-                    <div class="bg-white shadow-sm rounded-lg p-6">
-                        <h3 class="text-base font-semibold text-gray-800 mb-4">Rekap Pengguna Alumni Berdasarkan Fakultas</h3>
+                <div class="bg-white shadow-sm rounded-lg p-6">
+                    <div class="flex items-center justify-between mb-4 flex-wrap gap-4">
+                        <h3 class="text-base font-semibold text-gray-800">Rekap Pengguna Alumni Berdasarkan Fakultas</h3>
+                        <form method="GET" class="flex gap-2 items-center text-sm">
+                            @if (request('faculty_id')) <input type="hidden" name="faculty_id" value="{{ request('faculty_id') }}"> @endif
+                            @if (request('program_study_id')) <input type="hidden" name="program_study_id" value="{{ request('program_study_id') }}"> @endif
+                            <label for="recap_year">Tahun</label>
+                            <select id="recap_year" name="recap_year" onchange="this.form.submit()" class="rounded-md border-gray-300 text-sm">
+                                @foreach ($years as $y)
+                                    <option value="{{ $y }}" @selected($facultyRecap['year'] == $y)>{{ $y }}</option>
+                                @endforeach
+                            </select>
+                        </form>
+                    </div>
+
+                    @if ($facultyRecap['rows']->count() > 1)
                         <div class="overflow-x-auto">
                             <table class="min-w-full text-sm text-left border">
                                 <thead class="bg-gray-50">
@@ -118,8 +131,10 @@
                                 </tbody>
                             </table>
                         </div>
-                    </div>
-                @endif
+                    @else
+                        <p class="text-sm text-gray-500">Belum ada data pengguna alumni pada tahun {{ $facultyRecap['year'] }}.</p>
+                    @endif
+                </div>
             @endif
         </div>
     </div>
