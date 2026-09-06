@@ -143,6 +143,54 @@ class AlumniImportTest extends TestCase
         $this->assertSame('2003-02-13', $user->tanggal_lahir->format('Y-m-d'));
     }
 
+    public function test_duplicate_login_email_skips_only_that_login_without_failing_the_whole_import(): void
+    {
+        $faculty = Faculty::factory()->create(['code' => 'H']);
+        $studyProgram = StudyProgram::factory()->create(['code' => '55201', 'faculty_id' => $faculty->id]);
+
+        // An existing user already owns this email under a different NIM.
+        User::factory()->create(['nim' => 'A0A020999', 'email' => 'shared@example.com']);
+
+        $file = $this->csvFile(
+            ['nim', 'nama', 'tahunlulus', 'kodeprog', 'tgllahir', 'emailpersonal'],
+            [
+                [
+                    'nim' => 'A0A021010',
+                    'nama' => 'Punya Email Bentrok',
+                    'tahunlulus' => 2025,
+                    'kodeprog' => $studyProgram->code,
+                    'tgllahir' => '2003-02-13',
+                    'emailpersonal' => 'shared@example.com',
+                ],
+                [
+                    'nim' => 'A0A021011',
+                    'nama' => 'Baris Normal Setelahnya',
+                    'tahunlulus' => 2025,
+                    'kodeprog' => $studyProgram->code,
+                    'tgllahir' => '2004-01-01',
+                    'emailpersonal' => 'normal@example.com',
+                ],
+            ]
+        );
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin Universitas');
+
+        $response = $this->actingAs($admin)->post(route('alumni.import'), ['file' => $file]);
+
+        // Both alumni rows are saved regardless of the login-account collision...
+        $this->assertDatabaseHas('alumni', ['nim' => 'A0A021010', 'nama' => 'Punya Email Bentrok']);
+        $this->assertDatabaseHas('alumni', ['nim' => 'A0A021011']);
+
+        // ...but only the second one got a login account; the first is reported, not silently lost.
+        $this->assertDatabaseMissing('users', ['nim' => 'A0A021010']);
+        $this->assertDatabaseHas('users', ['nim' => 'A0A021011', 'email' => 'normal@example.com']);
+
+        $response->assertSessionHas('importSkipped', function (array $skipped) {
+            return count($skipped) === 1 && str_contains($skipped[0]['reason'], 'A0A021010') && str_contains($skipped[0]['reason'], 'shared@example.com');
+        });
+    }
+
     public function test_admin_universitas_can_bootstrap_a_new_program_studi_using_the_picked_faculty(): void
     {
         $faculty = Faculty::factory()->create(['code' => 'A', 'name' => 'Pertanian']);

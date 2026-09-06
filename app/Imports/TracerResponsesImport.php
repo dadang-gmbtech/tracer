@@ -34,9 +34,15 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
  *
  * Performance: alumni/study-program/faculty/province/city lookups are all
  * preloaded once before the loop (provinces/cities are small tables, loaded
- * in full; alumni/prodi are loaded only for the codes present in the file),
- * and every write runs inside one transaction — without this, a several-
- * thousand-row file turns into tens of thousands of individual queries.
+ * in full; alumni/prodi are loaded only for the codes present in the file) —
+ * without this, a several-thousand-row file turns into tens of thousands of
+ * individual queries.
+ *
+ * Each row's writes run inside their own transaction, not one transaction
+ * for the whole file: on Postgres a single failed row (e.g. a NOT NULL or
+ * unique-constraint violation) poisons the entire transaction and rolls
+ * back every other row too. A bad row is skipped and reported instead of
+ * failing the whole import.
  */
 class TracerResponsesImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
 {
@@ -64,19 +70,23 @@ class TracerResponsesImport implements SkipsEmptyRows, ToCollection, WithHeading
         $citiesByCode = $cities->keyBy('code');
         $citiesByProvinceAndName = $cities->keyBy(fn (City $c) => $c->province_id.'|'.$c->name);
 
-        DB::transaction(function () use ($rows, $alumniByNim, $studyProgramsByCode, $facultiesByCode, $provincesByName, $provincesByCode, $citiesByCode, $citiesByProvinceAndName) {
-            foreach ($rows as $index => $row) {
-                $this->importRow(
-                    $row, $index, $alumniByNim, $studyProgramsByCode, $facultiesByCode,
+        foreach ($rows as $index => $row) {
+            $line = $index + 2; // 0-based collection index + 1 for the heading row
+
+            try {
+                DB::transaction(fn () => $this->importRow(
+                    $row, $line, $alumniByNim, $studyProgramsByCode, $facultiesByCode,
                     $provincesByName, $provincesByCode, $citiesByCode, $citiesByProvinceAndName,
-                );
+                ));
+            } catch (\Throwable $e) {
+                $this->skipped[] = ['row' => $line, 'reason' => 'Gagal disimpan: '.$e->getMessage()];
             }
-        });
+        }
     }
 
     private function importRow(
         Collection $row,
-        int $index,
+        int $line,
         Collection $alumniByNim,
         Collection $studyProgramsByCode,
         Collection $facultiesByCode,
@@ -85,7 +95,6 @@ class TracerResponsesImport implements SkipsEmptyRows, ToCollection, WithHeading
         Collection $citiesByCode,
         Collection $citiesByProvinceAndName,
     ): void {
-        $line = $index + 2; // 0-based collection index + 1 for the heading row
         $nim = TracerValueParser::str($row['nimhsmsmh'] ?? null);
 
         if ($nim === null) {

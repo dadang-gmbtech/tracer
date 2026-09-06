@@ -34,12 +34,16 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
  * Lahir) is also created/updated for that alumni; leave it blank to skip
  * login provisioning (e.g. when the real birth date isn't known yet).
  *
- * Performance: every lookup (alumni/user by NIM, program studi by code,
- * faculty by code) is preloaded once into an in-memory map before the loop,
- * and all writes run inside one transaction — a naive per-row query/query
- * approach turns a few-thousand-row file into tens of thousands of
- * round trips and can take minutes; this keeps it to a handful of SELECTs
- * plus one write per row.
+ * Performance: every lookup (alumni/user by NIM or email, program studi by
+ * code, faculty by code) is preloaded once into an in-memory map before the
+ * loop — a naive per-row query approach turns a few-thousand-row file into
+ * tens of thousands of round trips and can take minutes.
+ *
+ * Each row's writes run inside their own transaction, not one transaction
+ * for the whole file: on Postgres, a single failed row (e.g. two alumni
+ * sharing a personal email, tripping users.email's unique constraint)
+ * poisons the entire transaction and rolls back every other row too. A bad
+ * row is now skipped and reported instead of failing the whole import.
  */
 class AlumniImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
 {
@@ -62,25 +66,30 @@ class AlumniImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
 
         $alumniByNim = Alumni::whereIn('nim', $nims)->get()->keyBy('nim');
         $usersByNim = User::whereIn('nim', $nims)->get()->keyBy('nim');
+        $usersByEmail = User::all()->keyBy('email');
         $studyProgramsByCode = StudyProgram::whereIn('code', $prodiCodes)->with('faculty')->get()->keyBy('code');
         $facultiesByCode = Faculty::all()->keyBy('code');
 
-        DB::transaction(function () use ($rows, $alumniByNim, $usersByNim, $studyProgramsByCode, $facultiesByCode) {
-            foreach ($rows as $index => $row) {
-                $this->importRow($row, $index, $alumniByNim, $usersByNim, $studyProgramsByCode, $facultiesByCode);
+        foreach ($rows as $index => $row) {
+            $line = $index + 2; // 0-based collection index + 1 for the heading row
+
+            try {
+                DB::transaction(fn () => $this->importRow($row, $line, $alumniByNim, $usersByNim, $usersByEmail, $studyProgramsByCode, $facultiesByCode));
+            } catch (\Throwable $e) {
+                $this->skipped[] = ['row' => $line, 'reason' => 'Gagal disimpan: '.$e->getMessage()];
             }
-        });
+        }
     }
 
     private function importRow(
         Collection $row,
-        int $index,
+        int $line,
         Collection $alumniByNim,
         Collection $usersByNim,
+        Collection $usersByEmail,
         Collection $studyProgramsByCode,
         Collection $facultiesByCode,
     ): void {
-        $line = $index + 2; // 0-based collection index + 1 for the heading row
         $nim = $this->pick($row, ['nim']);
 
         if ($nim === null) {
@@ -164,10 +173,16 @@ class AlumniImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
             $this->created++;
         }
 
-        $this->provisionLoginIfDobProvided($alumni, $email, $this->pick($row, ['tgllahir', 'tanggal_lahir']), $usersByNim);
+        $this->provisionLoginIfDobProvided($alumni, $email, $this->pick($row, ['tgllahir', 'tanggal_lahir']), $usersByNim, $usersByEmail, $line);
     }
 
-    private function provisionLoginIfDobProvided(Alumni $alumni, ?string $email, ?string $tanggalLahir, Collection $usersByNim): void
+    /**
+     * Skips login provisioning (but keeps the alumni data saved above) when
+     * the target email is already taken by a different NIM's account —
+     * common when two alumni share a personal email, and would otherwise
+     * trip users.email's unique constraint and roll back the whole row.
+     */
+    private function provisionLoginIfDobProvided(Alumni $alumni, ?string $email, ?string $tanggalLahir, Collection $usersByNim, Collection $usersByEmail, int $line): void
     {
         $dob = TracerValueParser::date($tanggalLahir);
 
@@ -184,22 +199,35 @@ class AlumniImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
                 'no_telp' => $alumni->phone,
                 'status' => 'active',
             ]);
-        } else {
-            $user = User::create([
-                'nim' => $alumni->nim,
-                'name' => $alumni->nama,
-                'email' => $email ?? $alumni->email ?? ($alumni->nim.'@mhs.unsoed.ac.id'),
-                'password' => bcrypt(Str::random(32)),
-                'tanggal_lahir' => $dob,
-                'no_telp' => $alumni->phone,
-                'status' => 'active',
-            ]);
-            $usersByNim->put($alumni->nim, $user);
+
+            return;
         }
 
-        if (! $user->hasRole('Alumni')) {
-            $user->assignRole('Alumni');
+        $loginEmail = $email ?? $alumni->email ?? ($alumni->nim.'@mhs.unsoed.ac.id');
+        $emailOwner = $usersByEmail->get($loginEmail);
+
+        if ($emailOwner && $emailOwner->nim !== $alumni->nim) {
+            $this->skipped[] = [
+                'row' => $line,
+                'reason' => "NIM {$alumni->nim}: data alumni tersimpan, tapi akun login tidak dibuat — email {$loginEmail} sudah dipakai NIM {$emailOwner->nim}",
+            ];
+
+            return;
         }
+
+        $user = User::create([
+            'nim' => $alumni->nim,
+            'name' => $alumni->nama,
+            'email' => $loginEmail,
+            'password' => bcrypt(Str::random(32)),
+            'tanggal_lahir' => $dob,
+            'no_telp' => $alumni->phone,
+            'status' => 'active',
+        ]);
+        $usersByNim->put($alumni->nim, $user);
+        $usersByEmail->put($loginEmail, $user);
+
+        $user->assignRole('Alumni');
     }
 
     /**
