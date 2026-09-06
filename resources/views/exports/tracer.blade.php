@@ -54,6 +54,18 @@
                         </div>
                     </div>
 
+                    <div>
+                        <x-input-label value="Jenjang" />
+                        <div class="mt-1 flex gap-4 items-center">
+                            @foreach (['D3', 'S1', 'S2', 'S3'] as $level)
+                                <label class="flex items-center gap-1 text-sm">
+                                    <input type="checkbox" name="jenjang[]" value="{{ $level }}" class="rounded">
+                                    {{ $level }}
+                                </label>
+                            @endforeach
+                        </div>
+                    </div>
+
                     <div class="flex justify-end">
                         <x-primary-button>Unduh Excel</x-primary-button>
                     </div>

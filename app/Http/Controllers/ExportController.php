@@ -107,6 +107,12 @@ class ExportController extends Controller
             $query->where('graduation_year', '<=', $request->integer('graduation_year_to'));
         }
 
+        $jenjang = array_values(array_intersect((array) $request->input('jenjang', []), ['D3', 'S1', 'S2', 'S3']));
+
+        if ($jenjang) {
+            $query->whereHas('studyProgram', fn ($q) => $q->whereIn('level', $jenjang));
+        }
+
         return $query;
     }
 }
