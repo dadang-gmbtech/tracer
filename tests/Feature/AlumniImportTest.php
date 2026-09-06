@@ -41,11 +41,11 @@ class AlumniImportTest extends TestCase
         $studyProgram = StudyProgram::factory()->create(['code' => '55201', 'faculty_id' => $faculty->id]);
 
         $file = $this->csvFile(
-            ['nim', 'nama', 'tahunlulu', 'emailunsoed', 'emailpersonal', 'notelp', 'tgllahir', 'kodeprog'],
+            ['nim', 'nama', 'tahunlulus', 'emailunsoed', 'emailpersonal', 'notelp', 'tgllahir', 'kodeprog'],
             [[
                 'nim' => 'A0A021001',
                 'nama' => 'Nurhanif',
-                'tahunlulu' => 2025,
+                'tahunlulus' => 2025,
                 'emailunsoed' => 'nurhanif@mhs.unsoed.ac.id',
                 'emailpersonal' => 'hanifnur@gmail.com',
                 'notelp' => '085877270746',
@@ -91,11 +91,11 @@ class AlumniImportTest extends TestCase
     public function test_admin_universitas_can_bootstrap_a_new_program_studi_when_faculty_columns_are_present(): void
     {
         $file = $this->csvFile(
-            ['nim', 'nama', 'tahunlulu', 'kodeprog', 'namajenjang', 'namaprogdikti', 'kode_fakultas', 'nama_fakultas'],
+            ['nim', 'nama', 'tahunlulus', 'kodeprog', 'namajenjang', 'namaprogdikti', 'kode_fakultas', 'nama_fakultas'],
             [[
                 'nim' => 'A0A021003',
                 'nama' => 'Contoh Dua',
-                'tahunlulu' => 2025,
+                'tahunlulus' => 2025,
                 'kodeprog' => '54401',
                 'namajenjang' => 'D3',
                 'namaprogdikti' => 'Agribisnis',
@@ -120,11 +120,11 @@ class AlumniImportTest extends TestCase
         $studyProgram = StudyProgram::factory()->create(['code' => '55201', 'faculty_id' => $faculty->id]);
 
         $file = $this->csvFile(
-            ['nim', 'nama', 'tahunlulu', 'kodeprog', 'tgllahir', 'emailpersonal'],
+            ['nim', 'nama', 'tahunlulus', 'kodeprog', 'tgllahir', 'emailpersonal'],
             [[
                 'nim' => 'A0A021004',
                 'nama' => 'Fifi Febiola',
-                'tahunlulu' => 2025,
+                'tahunlulus' => 2025,
                 'kodeprog' => $studyProgram->code,
                 'tgllahir' => '2003-02-13',
                 'emailpersonal' => 'fifi@example.com',
@@ -148,11 +148,11 @@ class AlumniImportTest extends TestCase
         $faculty = Faculty::factory()->create(['code' => 'A', 'name' => 'Pertanian']);
 
         $file = $this->csvFile(
-            ['nim', 'nama', 'tahunlulu', 'kodeprog', 'namajenjang', 'namaprogdikti'],
+            ['nim', 'nama', 'tahunlulus', 'kodeprog', 'namajenjang', 'namaprogdikti'],
             [[
                 'nim' => 'A0A021006',
                 'nama' => 'Contoh Empat',
-                'tahunlulu' => 2025,
+                'tahunlulus' => 2025,
                 'kodeprog' => '54401',
                 'namajenjang' => 'D3',
                 'namaprogdikti' => 'Agribisnis',
@@ -178,11 +178,11 @@ class AlumniImportTest extends TestCase
         $otherFaculty = Faculty::factory()->create(['code' => 'A']);
 
         $file = $this->csvFile(
-            ['nim', 'nama', 'tahunlulu', 'kodeprog', 'namajenjang', 'namaprogdikti'],
+            ['nim', 'nama', 'tahunlulus', 'kodeprog', 'namajenjang', 'namaprogdikti'],
             [[
                 'nim' => 'A0A021007',
                 'nama' => 'Contoh Lima',
-                'tahunlulu' => 2025,
+                'tahunlulus' => 2025,
                 'kodeprog' => '54402',
                 'namajenjang' => 'D3',
                 'namaprogdikti' => 'Peternakan',

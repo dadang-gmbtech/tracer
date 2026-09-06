@@ -26,7 +26,7 @@
                     <p>
                         Untuk mengisi/memperbarui <strong>data identitas alumni</strong> (bukan jawaban tracer studi
                         — untuk itu pakai menu <strong>Impor Data Tracer</strong>). Bisa langsung pakai file ekspor
-                        dari sistem akademik (kolom seperti <code>nim, nama, tahunlulu, emailunsoed, emailpersonal,
+                        dari sistem akademik (kolom seperti <code>nim, nama, tahunlulus, emailunsoed, emailpersonal,
                         npwp, tgllahir, notelp, kodeprog, namajenjang, namaprogdikti</code>) atau template di bawah.
                     </p>
                     <p>

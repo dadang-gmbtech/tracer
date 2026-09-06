@@ -17,7 +17,7 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
 /**
  * Bulk create/update the alumni roster itself (identity only — no tracer
  * answers). Matches the columns of the real SIAKAD-style export (nim, nama,
- * tahunlulu, emailunsoed, emailpersonal, npwp, tgllahir, notelp, kodeprog,
+ * tahunlulus, emailunsoed, emailpersonal, npwp, tgllahir, notelp, kodeprog,
  * namajenjang, namaprogdikti, plus extra columns like kodetahunakad/noskpi
  * which are accepted but ignored) — several alternate header spellings are
  * also accepted (see pick()) so a template-based file works too.
@@ -118,7 +118,7 @@ class AlumniImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
                     'email' => $email,
                     'faculty_id' => $studyProgram->faculty_id,
                     'program_study_id' => $studyProgram->id,
-                    'graduation_year' => TracerValueParser::int($this->pick($row, ['tahunlulu', 'tahunlulus', 'tahun_lulus'])),
+                    'graduation_year' => TracerValueParser::int($this->pick($row, ['tahunlulus', 'tahunlulu', 'tahun_lulus'])),
                     'nik' => $this->pick($row, ['nik']),
                     'npwp' => $this->pick($row, ['npwp']),
                     'phone' => $this->pick($row, ['notelp', 'no_telp']),

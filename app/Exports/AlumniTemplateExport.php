@@ -7,7 +7,7 @@ use Maatwebsite\Excel\Concerns\WithHeadings;
 
 /**
  * Mirrors the columns of the real SIAKAD-style alumni export (nim, nama,
- * tahunlulu, emailunsoed, emailpersonal, npwp, tgllahir, notelp, kodeprog,
+ * tahunlulus, emailunsoed, emailpersonal, npwp, tgllahir, notelp, kodeprog,
  * namajenjang, namaprogdikti). kode_fakultas/nama_fakultas are optional —
  * only needed if the program studi isn't registered yet.
  */
@@ -16,7 +16,7 @@ class AlumniTemplateExport implements FromArray, WithHeadings
     public function headings(): array
     {
         return [
-            'nim', 'nama', 'tahunlulu', 'emailunsoed', 'emailpersonal', 'npwp', 'tgllahir', 'notelp',
+            'nim', 'nama', 'tahunlulus', 'emailunsoed', 'emailpersonal', 'npwp', 'tgllahir', 'notelp',
             'kodeprog', 'namajenjang', 'namaprogdikti', 'kode_fakultas', 'nama_fakultas',
         ];
     }
