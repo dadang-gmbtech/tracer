@@ -20,7 +20,7 @@
                     </a>
                 </div>
 
-                <div class="hidden space-x-6 sm:-my-px sm:ms-10 sm:flex">
+                <div class="hidden space-x-6 sm:-my-px sm:ms-10 sm:flex sm:items-center">
                     @unless ($isAlumni)
                         <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                             {{ __('Dashboard') }}
