@@ -63,7 +63,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/alumni/import', [AlumniController::class, 'import'])->name('alumni.import');
 
     Route::get('/alumni', [AlumniController::class, 'index'])->name('alumni.index');
+    // Static /alumni/create must stay above the /alumni/{alumni} wildcard below,
+    // or "create" would be resolved as a (non-existent) alumni id instead.
+    Route::get('/alumni/create', [AlumniController::class, 'create'])->name('alumni.create');
+    Route::post('/alumni', [AlumniController::class, 'store'])->name('alumni.store');
     Route::get('/alumni/{alumni}', [AlumniController::class, 'show'])->name('alumni.show');
+    Route::get('/alumni/{alumni}/edit', [AlumniController::class, 'edit'])->name('alumni.edit');
+    Route::put('/alumni/{alumni}', [AlumniController::class, 'update'])->name('alumni.update');
     Route::get('/alumni/{alumni}/tracer', [TracerResponseController::class, 'edit'])->name('tracer.edit');
     Route::put('/alumni/{alumni}/tracer', [TracerResponseController::class, 'update'])->name('tracer.update');
     Route::post('/alumni/{alumni}/tracer/share-link', [TracerResponseController::class, 'shareEmployerLink'])->name('tracer.share-link');

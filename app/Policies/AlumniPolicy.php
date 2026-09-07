@@ -20,6 +20,16 @@ class AlumniPolicy
         return $this->inScope($user, $alumni);
     }
 
+    public function create(User $user): bool
+    {
+        return $this->canManageBioData($user);
+    }
+
+    public function update(User $user, Alumni $alumni): bool
+    {
+        return $this->canManageBioData($user) && $this->inScope($user, $alumni);
+    }
+
     public function fillTracer(User $user, Alumni $alumni): bool
     {
         if (! $user->can('fill-tracer')) {
@@ -31,6 +41,16 @@ class AlumniPolicy
         }
 
         return $this->inScope($user, $alumni) && ! $user->hasAnyRole(['Pimpinan Universitas', 'Pimpinan Fakultas']);
+    }
+
+    /**
+     * Only the roles that actually operate the tracer form on an alumnus's
+     * behalf may add/edit alumni bio data — not the alumnus's own account,
+     * and not the read-only Pimpinan roles.
+     */
+    private function canManageBioData(User $user): bool
+    {
+        return $user->can('fill-tracer') && ! $user->hasAnyRole(['Alumni', 'Pimpinan Universitas', 'Pimpinan Fakultas']);
     }
 
     private function inScope(User $user, Alumni $alumni): bool
