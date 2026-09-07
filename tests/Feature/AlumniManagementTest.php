@@ -21,6 +21,51 @@ class AlumniManagementTest extends TestCase
         $this->seed(RolesAndPermissionsSeeder::class);
     }
 
+    public function test_super_admin_sees_the_alumni_nav_link(): void
+    {
+        // Super Admin passes every Gate check via a Gate::before bypass, not
+        // by matching a role name — a nav check built on hasAnyRole() instead
+        // of the policy would (and once did) hide the link from them.
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+
+        $this->actingAs($admin)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee(route('alumni.index'), false);
+    }
+
+    public function test_super_admin_and_admin_universitas_can_edit_an_alumnus_in_any_faculty(): void
+    {
+        $faculty = Faculty::factory()->create();
+        $prodi = StudyProgram::factory()->create(['faculty_id' => $faculty->id]);
+        $alumni = Alumni::factory()->create(['faculty_id' => $faculty->id, 'program_study_id' => $prodi->id]);
+
+        $superAdmin = User::factory()->create();
+        $superAdmin->assignRole('Super Admin');
+
+        $this->actingAs($superAdmin)->put(route('alumni.update', $alumni), [
+            'nim' => $alumni->nim,
+            'nama' => 'Diedit Super Admin',
+            'faculty_id' => $faculty->id,
+            'program_study_id' => $prodi->id,
+            'graduation_year' => 2024,
+        ])->assertRedirect(route('alumni.index'));
+        $this->assertDatabaseHas('alumni', ['id' => $alumni->id, 'nama' => 'Diedit Super Admin']);
+
+        $adminUniversitas = User::factory()->create();
+        $adminUniversitas->assignRole('Admin Universitas');
+
+        $this->actingAs($adminUniversitas)->put(route('alumni.update', $alumni), [
+            'nim' => $alumni->nim,
+            'nama' => 'Diedit Admin Universitas',
+            'faculty_id' => $faculty->id,
+            'program_study_id' => $prodi->id,
+            'graduation_year' => 2024,
+        ])->assertRedirect(route('alumni.index'));
+        $this->assertDatabaseHas('alumni', ['id' => $alumni->id, 'nama' => 'Diedit Admin Universitas']);
+    }
+
     public function test_the_alumni_index_shows_faculty_jenjang_and_status_filters(): void
     {
         $faculty = Faculty::factory()->create();

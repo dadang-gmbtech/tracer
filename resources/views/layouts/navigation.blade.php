@@ -6,7 +6,10 @@
     $canManageHomeContent = $user->can('manage-home-content');
     $canExport = $user->can('export-data');
     $canImportTracer = $user->can('fill-tracer');
-    $canViewAlumni = $user->hasAnyRole(['Admin Universitas', 'Admin Fakultas', 'Admin Prodi', 'Surveyor', 'Pimpinan Universitas', 'Pimpinan Fakultas']);
+    // Uses the policy (not a hardcoded role list) so Super Admin — who only
+    // passes via the Gate::before bypass, not any role named here — sees the
+    // link too.
+    $canViewAlumni = $user->can('viewAny', \App\Models\Alumni::class);
     $isAlumni = $user->hasRole('Alumni');
 @endphp
 
