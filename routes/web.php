@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\CityController;
 use App\Http\Controllers\Admin\FacultyController;
+use App\Http\Controllers\Admin\HomeContentController;
 use App\Http\Controllers\Admin\ProgramStudyController;
 use App\Http\Controllers\Admin\ProvinceController;
 use App\Http\Controllers\Admin\QuestionController;
@@ -100,6 +101,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::resource('ump', UmpController::class)->except(['show']);
 
         Route::resource('questions', QuestionController::class)->except(['show']);
+
+        Route::get('home-content', [HomeContentController::class, 'edit'])->name('home-content.edit');
+        Route::put('home-content', [HomeContentController::class, 'update'])->name('home-content.update');
     });
 });
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Alumni;
 use App\Models\Faculty;
+use App\Models\HomePageContent;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
@@ -30,6 +31,7 @@ class HomeController extends Controller
         ])->orderBy('name')->get();
 
         return view('home', [
+            'content' => HomePageContent::current(),
             'totalAlumni' => $totalAlumni,
             'totalResponden' => $totalResponden,
             'tingkatRespon' => $totalAlumni > 0 ? round($totalResponden / $totalAlumni * 100, 1) : 0.0,

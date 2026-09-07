@@ -3,6 +3,7 @@
     $canManageUsers = $user->can('manage-users');
     $canManageMaster = $user->can('manage-master-data');
     $canManageQuestions = $user->can('manage-questions');
+    $canManageHomeContent = $user->can('manage-home-content');
     $canExport = $user->can('export-data');
     $canImportTracer = $user->can('fill-tracer');
     $canViewAlumni = $user->hasAnyRole(['Admin Universitas', 'Admin Fakultas', 'Admin Prodi', 'Surveyor', 'Pimpinan Universitas', 'Pimpinan Fakultas']);
@@ -63,7 +64,7 @@
                         </x-dropdown>
                     @endif
 
-                    @if ($canManageUsers || $canManageMaster || $canManageQuestions || $canImportTracer)
+                    @if ($canManageUsers || $canManageMaster || $canManageQuestions || $canImportTracer || $canManageHomeContent)
                         <x-dropdown align="left" width="56">
                             <x-slot name="trigger">
                                 <button class="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-500 hover:text-gray-700 border-b-2 border-transparent">
@@ -87,6 +88,9 @@
                                 @endif
                                 @if ($canManageQuestions)
                                     <x-dropdown-link :href="route('admin.questions.index')">Pertanyaan Tambahan</x-dropdown-link>
+                                @endif
+                                @if ($canManageHomeContent)
+                                    <x-dropdown-link :href="route('admin.home-content.edit')">Konten Halaman Depan</x-dropdown-link>
                                 @endif
                             </x-slot>
                         </x-dropdown>
@@ -157,6 +161,9 @@
                 <x-responsive-nav-link :href="route('admin.provinces.index')">Provinsi</x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('admin.cities.index')">Kabupaten/Kota</x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('admin.ump.index')">UMP</x-responsive-nav-link>
+            @endif
+            @if ($canManageHomeContent)
+                <x-responsive-nav-link :href="route('admin.home-content.edit')">Konten Halaman Depan</x-responsive-nav-link>
             @endif
         </div>
 

@@ -24,6 +24,9 @@ class RolesAndPermissionsSeeder extends Seeder
             'view-dashboard',
             'export-data',
             'upload-report',
+            // Super Admin only (see $roleMap) — not part of Admin Universitas'
+            // otherwise-identical "everything" list.
+            'manage-home-content',
         ];
 
         foreach ($permissions as $permission) {
@@ -32,7 +35,7 @@ class RolesAndPermissionsSeeder extends Seeder
 
         $roleMap = [
             'Super Admin' => $permissions,
-            'Admin Universitas' => $permissions,
+            'Admin Universitas' => array_diff($permissions, ['manage-home-content']),
             'Admin Fakultas' => ['manage-users', 'fill-tracer', 'view-dashboard', 'export-data', 'upload-report'],
             'Admin Prodi' => ['manage-users', 'fill-tracer', 'view-dashboard', 'export-data', 'upload-report'],
             'Surveyor' => ['fill-tracer'],
