@@ -219,4 +219,25 @@ class DashboardTest extends TestCase
             ->assertOk()
             ->assertSee('Peta Sebaran Alumni Berdasarkan Provinsi');
     }
+
+    public function test_the_dashboard_shows_a_domestic_and_overseas_distribution_table(): void
+    {
+        $jakarta = Province::factory()->create(['code' => '31', 'name' => 'D.K.I. Jakarta']);
+        $luarNegeri = Province::factory()->create(['code' => '99', 'name' => 'Luar Negeri']);
+
+        $domestic = Alumni::factory()->create();
+        $overseas = Alumni::factory()->create();
+        TracerResponse::factory()->create(['alumni_id' => $domestic->id, 'work_province_id' => $jakarta->id]);
+        TracerResponse::factory()->create(['alumni_id' => $overseas->id, 'work_province_id' => $luarNegeri->id]);
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+
+        $response = $this->actingAs($admin)->get(route('dashboard'));
+
+        $response->assertOk();
+        $response->assertSee('Tabel Sebaran Alumni');
+        $response->assertSee('D.K.I. Jakarta');
+        $response->assertSee('Luar Negeri');
+    }
 }

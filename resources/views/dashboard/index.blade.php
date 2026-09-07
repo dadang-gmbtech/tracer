@@ -143,6 +143,52 @@
                 </div>
 
                 <div class="bg-white shadow-sm rounded-lg p-6">
+                    <h3 class="text-base font-semibold text-gray-800 mb-4">Tabel Sebaran Alumni — Dalam &amp; Luar Negeri</h3>
+
+                    @if (count($provincePoints))
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full text-sm text-left border">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-3 py-2 border">#</th>
+                                        <th class="px-3 py-2 border">Lokasi</th>
+                                        <th class="px-3 py-2 border">Jumlah Alumni</th>
+                                        <th class="px-3 py-2 border">Persentase</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @php
+                                        $totalKeseluruhan = collect($provincePoints)->sum('jumlah');
+                                        $dalamNegeri = collect($provincePoints)->where('code', '!=', '99')->values();
+                                    @endphp
+                                    @foreach ($dalamNegeri as $i => $point)
+                                        <tr class="odd:bg-white even:bg-gray-50">
+                                            <td class="px-3 py-2 border">{{ $i + 1 }}</td>
+                                            <td class="px-3 py-2 border">{{ $point['name'] }}</td>
+                                            <td class="px-3 py-2 border">{{ $point['jumlah'] }}</td>
+                                            <td class="px-3 py-2 border">{{ $totalKeseluruhan > 0 ? round($point['jumlah'] / $totalKeseluruhan * 100, 1) : 0 }}%</td>
+                                        </tr>
+                                    @endforeach
+                                    <tr class="odd:bg-white even:bg-gray-50">
+                                        <td class="px-3 py-2 border">{{ $dalamNegeri->count() + 1 }}</td>
+                                        <td class="px-3 py-2 border">Luar Negeri</td>
+                                        <td class="px-3 py-2 border">{{ $luarNegeri['jumlah'] ?? 0 }}</td>
+                                        <td class="px-3 py-2 border">{{ $totalKeseluruhan > 0 ? round(($luarNegeri['jumlah'] ?? 0) / $totalKeseluruhan * 100, 1) : 0 }}%</td>
+                                    </tr>
+                                    <tr class="bg-green-50 font-semibold">
+                                        <td class="px-3 py-2 border" colspan="2">Total</td>
+                                        <td class="px-3 py-2 border">{{ $totalKeseluruhan }}</td>
+                                        <td class="px-3 py-2 border">100%</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    @else
+                        <p class="text-sm text-gray-500">Belum ada data lokasi kerja alumni pada cakupan ini.</p>
+                    @endif
+                </div>
+
+                <div class="bg-white shadow-sm rounded-lg p-6">
                     <div class="flex items-center justify-between mb-4 flex-wrap gap-4">
                         <h3 class="text-base font-semibold text-gray-800">Rekap Tracer Berdasarkan Fakultas</h3>
                         <form method="GET" class="flex gap-2 items-center text-sm">
