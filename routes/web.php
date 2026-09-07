@@ -14,14 +14,13 @@ use App\Http\Controllers\EmployerDashboardController;
 use App\Http\Controllers\EmployerImportController;
 use App\Http\Controllers\EmployerResponseController;
 use App\Http\Controllers\ExportController;
+use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TracerResponseController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return auth()->check() ? redirect()->route('dashboard') : redirect()->route('login');
-});
+Route::get('/', [HomeController::class, 'index'])->name('home');
 
 // Custom auth (SSO stub + NIM/tanggal lahir) — routes/auth.php keeps email+password for staff.
 Route::middleware('guest')->group(function () {
