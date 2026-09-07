@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">{{ __('Ekspor Data Tracer') }}</h2>
+        <h2 class="font-semibold text-xl text-gray-800 leading-tight">{{ __('Ekspor Data Alumni') }}</h2>
     </x-slot>
 
     <div class="py-8">
@@ -11,7 +11,7 @@
                     Kosongkan salah satu atau kedua "Tahun" untuk tidak membatasi ke arah itu.
                 </p>
 
-                <x-export-filter-form :action="route('export.tracer')" :years="$years" :faculties="$faculties" :program-studies="$programStudies" />
+                <x-export-filter-form :action="route('export.alumni')" :years="$years" :faculties="$faculties" :program-studies="$programStudies" />
             </div>
         </div>
     </div>

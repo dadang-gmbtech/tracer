@@ -75,7 +75,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/export/tracer/form', [ExportController::class, 'tracerForm'])->name('export.tracer.form');
     Route::get('/export/tracer', [ExportController::class, 'tracer'])->name('export.tracer');
+    Route::get('/export/alumni/form', [ExportController::class, 'alumniForm'])->name('export.alumni.form');
     Route::get('/export/alumni', [ExportController::class, 'alumni'])->name('export.alumni');
+    Route::get('/export/pengguna-alumni/form', [ExportController::class, 'employerResponsesForm'])->name('export.employer.form');
+    Route::get('/export/pengguna-alumni', [ExportController::class, 'employerResponses'])->name('export.employer');
     Route::get('/export/dashboard', [ExportController::class, 'dashboard'])->name('export.dashboard');
 
     Route::prefix('admin')->name('admin.')->group(function () {

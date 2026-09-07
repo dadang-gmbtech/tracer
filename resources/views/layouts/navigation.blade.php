@@ -57,7 +57,8 @@
                                 @endif
                                 @if ($canExport)
                                     <x-dropdown-link :href="route('export.tracer.form')">Ekspor Data Tracer (Excel)</x-dropdown-link>
-                                    <x-dropdown-link :href="route('export.alumni')">Ekspor Data Alumni (Excel)</x-dropdown-link>
+                                    <x-dropdown-link :href="route('export.alumni.form')">Ekspor Data Alumni (Excel)</x-dropdown-link>
+                                    <x-dropdown-link :href="route('export.employer.form')">Ekspor Data Pengguna Alumni (Excel)</x-dropdown-link>
                                     <x-dropdown-link :href="route('export.dashboard')">Ekspor Ringkasan Dashboard (Excel)</x-dropdown-link>
                                 @endif
                             </x-slot>
