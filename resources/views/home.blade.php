@@ -14,7 +14,7 @@
     <header class="sticky top-0 z-10 bg-white/80 backdrop-blur border-b border-gray-100">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
             <a href="#beranda" class="flex items-center gap-2">
-                <x-application-logo class="h-8 w-auto fill-current text-blue-700" />
+                <x-application-logo class="h-8 w-auto" />
                 <span class="font-semibold text-gray-800">Tracer Studi UNSOED</span>
             </a>
             <nav class="hidden sm:flex items-center gap-6 text-sm text-gray-600">
