@@ -20,14 +20,21 @@ class AlumniPolicy
         return $this->inScope($user, $alumni);
     }
 
+    /**
+     * Alumni bio data (NIM, nama, fakultas/prodi, ...) is master data — only
+     * Super Admin may add or correct it. Everyone else who returns false
+     * here still passes via the Gate::before bypass if they are Super Admin;
+     * for every other role this is a hard no, distinct from fillTracer()
+     * below (which Admin/Surveyor use constantly, scoped to their faculty).
+     */
     public function create(User $user): bool
     {
-        return $this->canManageBioData($user);
+        return false;
     }
 
     public function update(User $user, Alumni $alumni): bool
     {
-        return $this->canManageBioData($user) && $this->inScope($user, $alumni);
+        return false;
     }
 
     public function fillTracer(User $user, Alumni $alumni): bool
@@ -41,16 +48,6 @@ class AlumniPolicy
         }
 
         return $this->inScope($user, $alumni) && ! $user->hasAnyRole(['Pimpinan Universitas', 'Pimpinan Fakultas']);
-    }
-
-    /**
-     * Only the roles that actually operate the tracer form on an alumnus's
-     * behalf may add/edit alumni bio data — not the alumnus's own account,
-     * and not the read-only Pimpinan roles.
-     */
-    private function canManageBioData(User $user): bool
-    {
-        return $user->can('fill-tracer') && ! $user->hasAnyRole(['Alumni', 'Pimpinan Universitas', 'Pimpinan Fakultas']);
     }
 
     private function inScope(User $user, Alumni $alumni): bool

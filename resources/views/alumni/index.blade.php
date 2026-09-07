@@ -114,22 +114,25 @@
                                     </td>
                                     <td class="px-4 py-3">
                                         <div class="flex items-center gap-2">
-                                            @if ($canManageAlumni)
+                                            @if ($canFillTracer)
                                                 <a href="{{ route('tracer.edit', $a) }}" title="Isi Kuesioner Tracer"
                                                    class="inline-flex items-center justify-center h-8 w-8 rounded-md bg-green-600 text-white hover:bg-green-700">
                                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                                                         <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
                                                     </svg>
                                                 </a>
+                                            @endif
+                                            @if ($canManageAlumni)
                                                 <a href="{{ route('alumni.edit', $a) }}" title="Edit Data Alumni"
                                                    class="inline-flex items-center justify-center h-8 w-8 rounded-md bg-blue-600 text-white hover:bg-blue-700">
                                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                                                         <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
                                                     </svg>
                                                 </a>
-                                            @else
-                                                <a href="{{ route('alumni.show', $a) }}" class="text-blue-600 hover:underline">Detail</a>
                                             @endif
+                                            @unless ($canFillTracer || $canManageAlumni)
+                                                <a href="{{ route('alumni.show', $a) }}" class="text-blue-600 hover:underline">Detail</a>
+                                            @endunless
                                         </div>
                                     </td>
                                 </tr>

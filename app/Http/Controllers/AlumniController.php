@@ -55,7 +55,12 @@ class AlumniController extends Controller
             'alumni' => $query->orderBy('nama')->paginate(20)->withQueryString(),
             'graduationYears' => Alumni::visibleTo($user)->distinct()->orderByDesc('graduation_year')->pluck('graduation_year'),
             'faculties' => $isUniversityScoped ? Faculty::orderBy('name')->get() : collect(),
+            // Bio data (NIM, nama, fakultas/prodi, ...) is master data — only
+            // Super Admin may add/edit it (see AlumniPolicy). Filling in the
+            // tracer questionnaire on an alumnus's behalf is a separate,
+            // much wider ability (Admin/Surveyor within their own faculty).
             'canManageAlumni' => $user->can('create', Alumni::class),
+            'canFillTracer' => $user->can('fill-tracer') && ! $user->hasAnyRole(['Pimpinan Universitas', 'Pimpinan Fakultas']),
         ]);
     }
 
@@ -72,11 +77,11 @@ class AlumniController extends Controller
     {
         $this->authorize('create', Alumni::class);
 
-        $actor = $request->user();
-
+        // Only Super Admin ever reaches here (see AlumniPolicy), so unlike
+        // importForm() below there's no per-faculty scoping to apply.
         return view('alumni.create', [
-            'faculties' => $this->selectableFaculties($actor),
-            'programStudies' => $this->selectableProgramStudies($actor),
+            'faculties' => Faculty::orderBy('name')->get(),
+            'programStudies' => StudyProgram::orderBy('name')->get(),
         ]);
     }
 
@@ -95,8 +100,8 @@ class AlumniController extends Controller
 
         return view('alumni.edit', [
             'alumni' => $alumni,
-            'faculties' => $this->selectableFaculties($request->user()),
-            'programStudies' => $this->selectableProgramStudies($request->user()),
+            'faculties' => Faculty::orderBy('name')->get(),
+            'programStudies' => StudyProgram::orderBy('name')->get(),
         ]);
     }
 
@@ -172,34 +177,10 @@ class AlumniController extends Controller
     }
 
     /**
-     * Program studies the user is allowed to pick when adding/editing an
-     * alumnus's bio data — mirrors selectableFaculties() but one level down.
-     */
-    private function selectableProgramStudies(User $user): Collection
-    {
-        if ($user->hasAnyRole(['Super Admin', 'Admin Universitas'])) {
-            return StudyProgram::orderBy('name')->get();
-        }
-
-        if ($user->hasRole('Admin Prodi')) {
-            return $user->studyProgram ? collect([$user->studyProgram]) : collect();
-        }
-
-        if ($user->hasAnyRole(['Admin Fakultas', 'Surveyor']) && $user->faculty_id) {
-            return StudyProgram::where('faculty_id', $user->faculty_id)->orderBy('name')->get();
-        }
-
-        return collect();
-    }
-
-    /**
      * @return array{nim: string, nama: string, email: ?string, phone: ?string, nik: ?string, npwp: ?string, faculty_id: int, program_study_id: int, graduation_year: int}
      */
     private function validated(Request $request, ?Alumni $alumni = null): array
     {
-        $actor = $request->user();
-        $isUniversityScoped = $actor->hasAnyRole(['Super Admin', 'Admin Universitas']);
-
         $data = $request->validate([
             'nim' => ['required', 'string', 'max:30', Rule::unique('alumni', 'nim')->ignore($alumni)],
             'nama' => ['required', 'string', 'max:255'],
@@ -207,20 +188,10 @@ class AlumniController extends Controller
             'phone' => ['nullable', 'string', 'max:30'],
             'nik' => ['nullable', 'string', 'max:30'],
             'npwp' => ['nullable', 'string', 'max:30'],
-            'faculty_id' => [$isUniversityScoped ? 'required' : 'nullable', 'exists:faculties,id'],
+            'faculty_id' => ['required', 'exists:faculties,id'],
             'program_study_id' => ['required', 'exists:program_studies,id'],
             'graduation_year' => ['required', 'integer', 'digits:4', 'min:1960', 'max:'.(now()->year + 1)],
         ]);
-
-        // Non-university admins can only ever add/edit alumni within their
-        // own scope, regardless of what the form submitted.
-        if (! $isUniversityScoped) {
-            $data['faculty_id'] = $actor->faculty_id;
-        }
-
-        if ($actor->hasRole('Admin Prodi')) {
-            $data['program_study_id'] = $actor->program_study_id;
-        }
 
         if (StudyProgram::find($data['program_study_id'])?->faculty_id !== (int) $data['faculty_id']) {
             throw ValidationException::withMessages(['program_study_id' => 'Program studi tidak sesuai dengan fakultas yang dipilih.']);
