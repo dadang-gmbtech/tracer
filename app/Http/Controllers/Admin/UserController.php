@@ -93,12 +93,17 @@ class UserController extends Controller
 
         $data = $this->validated($request, $user);
 
+        if (($data['status'] ?? null) === 'inactive' && $request->user()->is($user)) {
+            return back()->withErrors(['status' => 'Anda tidak dapat menonaktifkan akun Anda sendiri.'])->withInput();
+        }
+
         $user->update([
             'name' => $data['name'],
             'email' => $data['email'],
             'no_telp' => $data['no_telp'] ?? null,
             'faculty_id' => $data['faculty_id'] ?? null,
             'program_study_id' => $data['program_study_id'] ?? null,
+            'status' => $data['status'] ?? $user->status,
         ]);
 
         if (! empty($data['password'])) {
@@ -195,6 +200,8 @@ class UserController extends Controller
             'faculty_id' => ['nullable', 'exists:faculties,id'],
             'program_study_id' => ['nullable', 'exists:program_studies,id'],
             'password' => [$user ? 'nullable' : 'required', 'nullable', 'string', 'min:8'],
+            // Only editable on update — a new user is always created active.
+            'status' => [$user ? 'required' : 'sometimes', 'string', 'in:active,inactive'],
         ];
 
         $data = $request->validate($rules);

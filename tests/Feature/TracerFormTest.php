@@ -76,6 +76,21 @@ class TracerFormTest extends TestCase
         $response->assertRedirect(route('tracer.edit', $alumni));
     }
 
+    public function test_an_inactive_alumni_cannot_log_in_via_nim_and_tanggal_lahir(): void
+    {
+        $alumni = Alumni::factory()->create(['nim' => 'A1A003XYZ']);
+        $user = User::factory()->create(['nim' => $alumni->nim, 'tanggal_lahir' => '2000-01-01', 'status' => 'inactive']);
+        $user->assignRole('Alumni');
+
+        $response = $this->post(route('login.nim'), [
+            'nim' => $alumni->nim,
+            'tanggal_lahir' => '2000-01-01',
+        ]);
+
+        $this->assertGuest();
+        $response->assertSessionHasErrors('nim');
+    }
+
     public function test_alumni_cannot_fill_tracer_form_for_another_alumni(): void
     {
         $alumni = Alumni::factory()->create();

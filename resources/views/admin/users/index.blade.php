@@ -46,6 +46,7 @@
                                 <th class="px-4 py-3">Email</th>
                                 <th class="px-4 py-3">Role</th>
                                 <th class="px-4 py-3">Cakupan</th>
+                                <th class="px-4 py-3">Status</th>
                                 <th class="px-4 py-3"></th>
                             </tr>
                         </thead>
@@ -57,12 +58,19 @@
                                     <td class="px-4 py-3">{{ $u->email }}</td>
                                     <td class="px-4 py-3">{{ $u->getRoleNames()->join(', ') }}</td>
                                     <td class="px-4 py-3">{{ $u->faculty?->name }} {{ $u->studyProgram?->name }}</td>
+                                    <td class="px-4 py-3">
+                                        @if ($u->isActive())
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">Aktif</span>
+                                        @else
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">Tidak Aktif</span>
+                                        @endif
+                                    </td>
                                     <td class="px-4 py-3 space-x-3">
                                         <a href="{{ route('admin.users.edit', $u) }}" class="text-blue-600 hover:underline">Edit</a>
                                     </td>
                                 </tr>
                             @empty
-                                <tr><td colspan="6" class="px-4 py-6 text-center text-gray-400">Tidak ada data.</td></tr>
+                                <tr><td colspan="7" class="px-4 py-6 text-center text-gray-400">Tidak ada data.</td></tr>
                             @endforelse
                         </tbody>
                     </table>

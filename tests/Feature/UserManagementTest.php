@@ -2,10 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Http\Middleware\EnsureUserIsActive;
 use App\Models\Faculty;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Tests\TestCase;
 
 class UserManagementTest extends TestCase
@@ -71,6 +73,7 @@ class UserManagementTest extends TestCase
             'name' => 'Nama Baru',
             'email' => 'tetap.sama@unsoed.ac.id',
             'role' => 'Surveyor',
+            'status' => 'active',
         ]);
 
         $response->assertRedirect(route('admin.users.index'));
@@ -92,6 +95,73 @@ class UserManagementTest extends TestCase
         ]);
 
         $response->assertSessionHasErrors('email');
+    }
+
+    public function test_admin_universitas_can_deactivate_a_user(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin Universitas');
+        $target = User::factory()->create(['status' => 'active']);
+        $target->assignRole('Surveyor');
+
+        $response = $this->actingAs($admin)->put(route('admin.users.update', $target), [
+            'name' => $target->name,
+            'email' => $target->email,
+            'role' => 'Surveyor',
+            'status' => 'inactive',
+        ]);
+
+        $response->assertRedirect(route('admin.users.index'));
+        $this->assertDatabaseHas('users', ['id' => $target->id, 'status' => 'inactive']);
+    }
+
+    public function test_an_admin_cannot_deactivate_their_own_account(): void
+    {
+        $admin = User::factory()->create(['status' => 'active']);
+        $admin->assignRole('Admin Universitas');
+
+        $response = $this->actingAs($admin)->put(route('admin.users.update', $admin), [
+            'name' => $admin->name,
+            'email' => $admin->email,
+            'role' => 'Admin Universitas',
+            'status' => 'inactive',
+        ]);
+
+        $response->assertSessionHasErrors('status');
+        $this->assertDatabaseHas('users', ['id' => $admin->id, 'status' => 'active']);
+    }
+
+    public function test_ensure_user_is_active_middleware_logs_out_and_redirects_an_inactive_user(): void
+    {
+        // EnsureUserIsActive is what makes deactivating a user take effect
+        // immediately, even for a session that was already logged in — the
+        // checks at each login entry point only block *new* logins. Tested
+        // directly against the middleware rather than by chaining two HTTP
+        // calls in one test: Laravel's SessionGuard caches its resolved user
+        // for the lifetime of the test process, so a second in-process
+        // request can't observe a DB update made mid-test the way a real,
+        // separate HTTP request would.
+        $user = User::factory()->create(['status' => 'inactive']);
+        $this->actingAs($user);
+
+        $request = Request::create('/dashboard');
+        $request->setLaravelSession($this->app['session']->driver());
+
+        $response = (new EnsureUserIsActive)->handle($request, fn () => response('should not reach here'));
+
+        $this->assertTrue($response->isRedirect(route('login')));
+        $this->assertGuest();
+    }
+
+    public function test_ensure_user_is_active_middleware_passes_through_an_active_user(): void
+    {
+        $user = User::factory()->create(['status' => 'active']);
+        $this->actingAs($user);
+
+        $response = (new EnsureUserIsActive)->handle(Request::create('/dashboard'), fn () => response('ok'));
+
+        $this->assertSame('ok', $response->getContent());
+        $this->assertAuthenticatedAs($user);
     }
 
     public function test_admin_fakultas_cannot_create_an_admin_universitas(): void

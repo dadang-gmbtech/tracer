@@ -16,6 +16,13 @@ class LoginController extends Controller
     public function loginSso(SsoLoginServiceContract $sso): RedirectResponse
     {
         $user = $sso->login();
+
+        if (! $user->isActive()) {
+            return redirect()->route('login')->withErrors([
+                'email' => 'Akun Anda tidak aktif. Silakan hubungi admin.',
+            ]);
+        }
+
         Auth::login($user);
 
         return redirect()->intended($user->postLoginUrl());
@@ -45,6 +52,14 @@ class LoginController extends Controller
 
             return back()->withErrors([
                 'nim' => 'Kombinasi NIM dan Tanggal Lahir tidak ditemukan.',
+            ])->onlyInput('nim');
+        }
+
+        if (! $user->isActive()) {
+            RateLimiter::hit($throttleKey);
+
+            return back()->withErrors([
+                'nim' => 'Akun Anda tidak aktif. Silakan hubungi admin.',
             ])->onlyInput('nim');
         }
 

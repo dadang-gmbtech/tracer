@@ -56,6 +56,17 @@
                         @endforeach
                     </select>
                 </div>
+                <div>
+                    <x-input-label for="status" value="Status" />
+                    <select id="status" name="status" class="mt-1 w-full rounded-md border-gray-300 text-sm" required>
+                        <option value="active" @selected(old('status', $targetUser->status) === 'active')>Aktif</option>
+                        <option value="inactive" @selected(old('status', $targetUser->status) === 'inactive')>Tidak Aktif</option>
+                    </select>
+                    <x-input-error :messages="$errors->get('status')" class="mt-1" />
+                    @if (auth()->user()->is($targetUser))
+                        <p class="mt-1 text-xs text-gray-500">Anda tidak dapat menonaktifkan akun Anda sendiri.</p>
+                    @endif
+                </div>
                 <div class="flex justify-end">
                     <x-primary-button>Simpan</x-primary-button>
                 </div>
