@@ -7,6 +7,7 @@ use App\Models\Faculty;
 use App\Models\StudyProgram;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class ProgramStudyController extends Controller
@@ -72,7 +73,9 @@ class ProgramStudyController extends Controller
     {
         return $request->validate([
             'faculty_id' => ['required', 'exists:faculties,id'],
-            'code' => ['required', 'string', 'max:20', 'unique:program_studies,code,'.($programStudy?->id)],
+            // See UserController::validated() for why this must be the fluent
+            // Rule::unique()->ignore() form, not a string-concatenated rule.
+            'code' => ['required', 'string', 'max:20', Rule::unique('program_studies', 'code')->ignore($programStudy)],
             'name' => ['required', 'string', 'max:255'],
             'level' => ['required', 'string', 'max:20'],
         ]);

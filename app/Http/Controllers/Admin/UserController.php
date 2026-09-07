@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -183,7 +184,12 @@ class UserController extends Controller
 
         $rules = [
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email,'.($user?->id)],
+            // A string rule built as 'unique:users,email,'.($user?->id) leaves a
+            // trailing empty "ignore id" segment when $user is null (create),
+            // which Postgres rejects outright when comparing it to the bigint id
+            // column (SQLSTATE 22P02) — MySQL/SQLite silently tolerate it, so this
+            // only broke in production. Rule::unique()->ignore(null) is a no-op.
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user)],
             'no_telp' => ['nullable', 'string', 'max:50'],
             'role' => ['required', 'string', 'in:'.implode(',', $this->assignableRoles($actor))],
             'faculty_id' => ['nullable', 'exists:faculties,id'],
