@@ -137,7 +137,7 @@ class DashboardService
      * anywhere here (there's no province to plot them at).
      *
      * @param  array{faculty_id?: int, program_study_id?: int, jenjang?: list<string>}  $filters
-     * @return list<array{code: string, name: string, jumlah: int, lat: ?float, lng: ?float}>
+     * @return list<array{code: string, name: string, jumlah: int, lat: ?float, lng: ?float, is_luar_negeri: bool}>
      */
     public function alumniByProvince(User $user, array $filters = []): array
     {
@@ -146,11 +146,11 @@ class DashboardService
         return $alumni
             ->map(fn (Alumni $a) => $a->tracerResponse?->workProvince)
             ->filter()
-            ->groupBy('code')
+            ->groupBy('id')
             ->map(function (Collection $group) {
                 /** @var Province $province */
                 $province = $group->first();
-                $coords = ProvinceCentroids::forCode($province->code);
+                $coords = ProvinceCentroids::forName($province->name);
 
                 return [
                     'code' => $province->code,
@@ -158,6 +158,7 @@ class DashboardService
                     'jumlah' => $group->count(),
                     'lat' => $coords[0] ?? null,
                     'lng' => $coords[1] ?? null,
+                    'is_luar_negeri' => ProvinceCentroids::isLuarNegeri($province->name),
                 ];
             })
             ->sortByDesc('jumlah')
