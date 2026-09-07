@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\UmpController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AlumniController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\AutoReportController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EmployerDashboardController;
 use App\Http\Controllers\EmployerImportController;
@@ -70,6 +71,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('/reports/create', [ReportController::class, 'create'])->name('reports.create');
     Route::post('/reports', [ReportController::class, 'store'])->name('reports.store');
+    Route::get('/reports/otomatis', [AutoReportController::class, 'form'])->name('reports.auto.form');
+    Route::get('/reports/otomatis/unduh', [AutoReportController::class, 'download'])->name('reports.auto.download');
     Route::get('/reports/{report}/download', [ReportController::class, 'download'])->name('reports.download');
     Route::delete('/reports/{report}', [ReportController::class, 'destroy'])->name('reports.destroy');
 

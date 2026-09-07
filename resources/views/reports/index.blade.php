@@ -1,10 +1,15 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between flex-wrap gap-2">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">{{ __('Laporan Tracer Studi') }}</h2>
-            @can('create', \App\Models\Report::class)
-                <a href="{{ route('reports.create') }}" class="text-sm text-blue-600 hover:underline">+ Unggah Laporan</a>
-            @endcan
+            <div class="space-x-3 text-sm">
+                @can('export-data')
+                    <a href="{{ route('reports.auto.form') }}" class="text-blue-600 hover:underline">Laporan Otomatis (PDF)</a>
+                @endcan
+                @can('create', \App\Models\Report::class)
+                    <a href="{{ route('reports.create') }}" class="text-blue-600 hover:underline">+ Unggah Laporan</a>
+                @endcan
+            </div>
         </div>
     </x-slot>
 
