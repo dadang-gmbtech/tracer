@@ -52,6 +52,9 @@
         'borderColor' => $palette[array_search($key, array_keys($tempatLabels)) % count($palette)],
         'tension' => 0.3,
     ])->values()->all());
+
+    $luarNegeri = collect($provincePoints)->firstWhere('code', '99');
+    $totalAlumniDiPeta = collect($provincePoints)->where('code', '!=', '99')->sum('jumlah');
 @endphp
 
 <x-app-layout>
@@ -116,6 +119,27 @@
                     <x-chart-card title="Rata-rata Waktu Bekerja (Bulan)" :config="$waktuTungguConfig" />
                     <x-chart-card title="Posisi Wiraswasta" :config="$posisiConfig" />
                     <x-chart-card title="Tempat Bekerja" :config="$tempatConfig" />
+                </div>
+
+                <div class="bg-white shadow-sm rounded-lg p-6">
+                    <h3 class="text-base font-semibold text-gray-800 mb-1">Peta Sebaran Alumni Berdasarkan Provinsi</h3>
+                    <p class="text-xs text-gray-500 mb-4">
+                        Berdasarkan provinsi tempat bekerja pada jawaban tracer studi ({{ $totalAlumniDiPeta }} alumni
+                        di {{ count($provincePoints) - ($luarNegeri ? 1 : 0) }} provinsi tercakup dalam peta;
+                        besar lingkaran menunjukkan jumlah alumni). Alumni yang belum mengisi tracer studi atau
+                        belum mengisi lokasi kerja tidak tercakup.
+                    </p>
+                    @if (count($provincePoints))
+                        <x-province-map :points="$provincePoints" />
+                        @if ($luarNegeri)
+                            <p class="mt-3 text-xs text-gray-500">
+                                Selain itu, {{ $luarNegeri['jumlah'] }} alumni bekerja di luar negeri (tidak
+                                ditampilkan di peta).
+                            </p>
+                        @endif
+                    @else
+                        <p class="text-sm text-gray-500">Belum ada data lokasi kerja alumni pada cakupan ini.</p>
+                    @endif
                 </div>
 
                 <div class="bg-white shadow-sm rounded-lg p-6">

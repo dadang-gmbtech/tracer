@@ -40,6 +40,7 @@ class DashboardController extends Controller
             'summary' => $summary,
             'monthlyBreakdown' => $this->dashboard->monthlyBreakdown($user, $yearA, $yearB, $filters),
             'facultyRecap' => $this->dashboard->facultyRecap($user, $recapYear, $filters),
+            'provincePoints' => $this->dashboard->alumniByProvince($user, $filters),
             'yearA' => $yearA,
             'yearB' => $yearB,
             'recapYear' => $recapYear,

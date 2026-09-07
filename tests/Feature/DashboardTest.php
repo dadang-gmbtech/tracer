@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Alumni;
 use App\Models\Faculty;
+use App\Models\Province;
 use App\Models\StudyProgram;
 use App\Models\TracerResponse;
 use App\Models\User;
@@ -168,5 +169,54 @@ class DashboardTest extends TestCase
         $this->actingAs($user)
             ->get(route('dashboard'))
             ->assertRedirect(route('tracer.edit', $alumni));
+    }
+
+    public function test_alumni_by_province_groups_and_counts_alumni_by_work_province(): void
+    {
+        $jakarta = Province::factory()->create(['code' => '31', 'name' => 'D.K.I. Jakarta']); // has a known centroid
+        $alumniA = Alumni::factory()->create();
+        $alumniB = Alumni::factory()->create();
+        TracerResponse::factory()->create(['alumni_id' => $alumniA->id, 'work_province_id' => $jakarta->id]);
+        TracerResponse::factory()->create(['alumni_id' => $alumniB->id, 'work_province_id' => $jakarta->id]);
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+
+        $points = app(DashboardService::class)->alumniByProvince($admin);
+
+        $this->assertCount(1, $points);
+        $this->assertSame('D.K.I. Jakarta', $points[0]['name']);
+        $this->assertSame(2, $points[0]['jumlah']);
+        $this->assertNotNull($points[0]['lat']);
+        $this->assertNotNull($points[0]['lng']);
+    }
+
+    public function test_alumni_by_province_excludes_alumni_without_a_tracer_response_or_work_location(): void
+    {
+        Alumni::factory()->create(); // never filled the tracer form
+        $noLocation = Alumni::factory()->create();
+        TracerResponse::factory()->create(['alumni_id' => $noLocation->id, 'work_province_id' => null]);
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+
+        $points = app(DashboardService::class)->alumniByProvince($admin);
+
+        $this->assertSame([], $points);
+    }
+
+    public function test_the_dashboard_shows_the_province_distribution_map(): void
+    {
+        $jakarta = Province::factory()->create(['code' => '31', 'name' => 'D.K.I. Jakarta']);
+        $alumni = Alumni::factory()->create();
+        TracerResponse::factory()->create(['alumni_id' => $alumni->id, 'work_province_id' => $jakarta->id]);
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+
+        $this->actingAs($admin)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('Peta Sebaran Alumni Berdasarkan Provinsi');
     }
 }

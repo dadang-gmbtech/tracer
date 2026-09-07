@@ -3,9 +3,11 @@
 namespace App\Services;
 
 use App\Models\Alumni;
+use App\Models\Province;
 use App\Models\TracerResponse;
 use App\Models\UmpSalary;
 use App\Models\User;
+use App\Support\ProvinceCentroids;
 use Illuminate\Support\Collection;
 
 class DashboardService
@@ -124,6 +126,43 @@ class DashboardService
                 'multilateral' => $bekerja->where('f1101', 7)->count(),
             ],
         ];
+    }
+
+    /**
+     * Alumni counted by the province they work in (f5a1/work_province_id on
+     * their tracer response), across all graduation years in scope — a
+     * cohort-year slice isn't useful for a distribution map, unlike the
+     * dashboard's other per-year breakdowns. Alumni who haven't answered the
+     * tracer form, or left the work-location question blank, aren't counted
+     * anywhere here (there's no province to plot them at).
+     *
+     * @param  array{faculty_id?: int, program_study_id?: int, jenjang?: list<string>}  $filters
+     * @return list<array{code: string, name: string, jumlah: int, lat: ?float, lng: ?float}>
+     */
+    public function alumniByProvince(User $user, array $filters = []): array
+    {
+        $alumni = $this->scopedAlumni($user, $filters)->with('tracerResponse.workProvince')->get();
+
+        return $alumni
+            ->map(fn (Alumni $a) => $a->tracerResponse?->workProvince)
+            ->filter()
+            ->groupBy('code')
+            ->map(function (Collection $group) {
+                /** @var Province $province */
+                $province = $group->first();
+                $coords = ProvinceCentroids::forCode($province->code);
+
+                return [
+                    'code' => $province->code,
+                    'name' => $province->name,
+                    'jumlah' => $group->count(),
+                    'lat' => $coords[0] ?? null,
+                    'lng' => $coords[1] ?? null,
+                ];
+            })
+            ->sortByDesc('jumlah')
+            ->values()
+            ->all();
     }
 
     /**
