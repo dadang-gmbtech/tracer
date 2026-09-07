@@ -12,8 +12,7 @@
 
             <p class="text-sm text-gray-600">
                 Mengubah teks yang tampil di <a href="{{ route('home') }}" target="_blank" class="text-blue-600 hover:underline">halaman depan publik</a>
-                (sebelum login). Statistik alumni dan tata letak halaman tidak diatur di sini — otomatis dari data
-                sistem.
+                (sebelum login). Tata letak halaman tidak diatur di sini.
             </p>
 
             <form method="POST" action="{{ route('admin.home-content.update') }}" class="space-y-6">

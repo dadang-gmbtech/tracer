@@ -20,7 +20,6 @@
             <nav class="hidden sm:flex items-center gap-6 text-sm text-gray-600">
                 <a href="#tentang" class="hover:text-blue-700 transition-colors">Tentang</a>
                 <a href="#alur" class="hover:text-blue-700 transition-colors">Alur Pengisian</a>
-                <a href="#statistik" class="hover:text-blue-700 transition-colors">Statistik</a>
             </nav>
             <a href="{{ route('login') }}"
                class="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium text-white bg-blue-700 hover:bg-blue-800 transition-colors shadow-sm hover:shadow">
@@ -120,62 +119,6 @@
                     </div>
                 @endforeach
             </div>
-        </div>
-    </section>
-
-    <section id="statistik" class="bg-gray-50">
-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-            <div x-data="revealOnScroll" :class="visible && 'opacity-100 translate-y-0'"
-                 class="text-center opacity-0 translate-y-6 transition-all duration-700">
-                <h2 class="text-2xl font-bold text-gray-800">Statistik Partisipasi Alumni</h2>
-            </div>
-
-            <div class="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-6">
-                @foreach ([
-                    ['label' => 'Alumni Terdaftar', 'value' => $totalAlumni, 'decimals' => 0, 'suffix' => ''],
-                    ['label' => 'Responden Tracer Studi', 'value' => $totalResponden, 'decimals' => 0, 'suffix' => ''],
-                    ['label' => 'Tingkat Respon Keseluruhan', 'value' => $tingkatRespon, 'decimals' => 1, 'suffix' => '%'],
-                ] as $i => $stat)
-                    <div x-data="revealOnScroll" :class="visible && 'opacity-100 translate-y-0'"
-                         style="transition-delay: {{ $i * 100 }}ms"
-                         class="opacity-0 translate-y-6 transition-all duration-700 bg-white rounded-lg shadow-sm p-6 text-center hover:shadow-md hover:-translate-y-1 transition-transform">
-                        <div class="text-3xl font-bold text-blue-700">
-                            <span x-data="countUp({{ $stat['value'] }}, {{ $stat['decimals'] }})" x-text="display">0</span>{{ $stat['suffix'] }}
-                        </div>
-                        <div class="mt-1 text-sm text-gray-600">{{ $stat['label'] }}</div>
-                    </div>
-                @endforeach
-            </div>
-
-            @if ($perFakultas->isNotEmpty())
-                <div x-data="revealOnScroll" :class="visible && 'opacity-100 translate-y-0'"
-                     class="mt-10 opacity-0 translate-y-6 transition-all duration-700 bg-white shadow-sm rounded-lg overflow-hidden">
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full text-sm text-left">
-                            <thead class="bg-gray-50 text-gray-500">
-                                <tr>
-                                    <th class="px-4 py-3">Fakultas</th>
-                                    <th class="px-4 py-3">Jumlah Alumni</th>
-                                    <th class="px-4 py-3">Responden</th>
-                                    <th class="px-4 py-3">Tingkat Respon</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-100">
-                                @foreach ($perFakultas as $faculty)
-                                    <tr class="hover:bg-blue-50/50 transition-colors">
-                                        <td class="px-4 py-3 font-medium text-gray-800">{{ $faculty->name }}</td>
-                                        <td class="px-4 py-3">{{ $faculty->alumni_count }}</td>
-                                        <td class="px-4 py-3">{{ $faculty->responden_count }}</td>
-                                        <td class="px-4 py-3">
-                                            {{ $faculty->alumni_count > 0 ? round($faculty->responden_count / $faculty->alumni_count * 100, 1) : 0 }}%
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            @endif
         </div>
     </section>
 

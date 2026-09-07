@@ -3,8 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\Alumni;
-use App\Models\Faculty;
-use App\Models\TracerResponse;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -28,18 +26,11 @@ class HomeTest extends TestCase
             ->assertSee('Isi Kuesioner Sekarang');
     }
 
-    public function test_the_landing_page_shows_aggregate_response_statistics_per_faculty(): void
+    public function test_the_landing_page_does_not_show_tracer_statistics(): void
     {
-        $faculty = Faculty::factory()->create(['name' => 'Fakultas Pertanian']);
-        $responded = Alumni::factory()->create(['faculty_id' => $faculty->id]);
-        Alumni::factory()->create(['faculty_id' => $faculty->id]);
-        TracerResponse::factory()->create(['alumni_id' => $responded->id]);
-
-        $response = $this->get('/');
-
-        $response->assertOk();
-        $response->assertSee('Fakultas Pertanian');
-        $response->assertSee('50%'); // 1 of 2 alumni in the faculty responded
+        $this->get('/')
+            ->assertOk()
+            ->assertDontSee('Statistik Partisipasi Alumni');
     }
 
     public function test_a_logged_in_staff_user_is_redirected_to_the_dashboard(): void

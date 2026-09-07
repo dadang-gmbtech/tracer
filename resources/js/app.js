@@ -31,40 +31,4 @@ Alpine.data('revealOnScroll', () => ({
     },
 }));
 
-/**
- * Animates a number counting up from 0 to `target` the first time the
- * element scrolls into view. Usage: <span x-data="countUp(1234)" x-text="display">0</span>
- */
-Alpine.data('countUp', (target, decimals = 0) => ({
-    display: (0).toLocaleString('id-ID'),
-    init() {
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach((entry) => {
-                if (entry.isIntersecting) {
-                    this.run();
-                    observer.disconnect();
-                }
-            });
-        }, { threshold: 0.5 });
-
-        observer.observe(this.$el);
-    },
-    run() {
-        const duration = 1200;
-        const start = performance.now();
-        const step = (now) => {
-            const progress = Math.min((now - start) / duration, 1);
-            const value = target * progress;
-            this.display = value.toLocaleString('id-ID', {
-                minimumFractionDigits: decimals,
-                maximumFractionDigits: decimals,
-            });
-            if (progress < 1) {
-                requestAnimationFrame(step);
-            }
-        };
-        requestAnimationFrame(step);
-    },
-}));
-
 Alpine.start();
