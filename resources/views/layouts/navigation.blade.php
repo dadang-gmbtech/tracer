@@ -5,7 +5,9 @@
     $canManageQuestions = $user->can('manage-questions');
     $canManageHomeContent = $user->can('manage-home-content');
     $canExport = $user->can('export-data');
-    $canImportTracer = $user->can('fill-tracer');
+    // Bulk Excel import is a staff action — deliberately separate from
+    // fill-tracer, which Alumni also hold just to fill in their own form.
+    $canImportData = $user->can('import-data');
     // Uses the policy (not a hardcoded role list) so Super Admin — who only
     // passes via the Gate::before bypass, not any role named here — sees the
     // link too.
@@ -45,7 +47,7 @@
                         </x-nav-link>
                     @endunless
 
-                    @if ($canExport || $canImportTracer)
+                    @if ($canExport || $canImportData)
                         <x-dropdown align="left" width="56">
                             <x-slot name="trigger">
                                 <button class="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-500 hover:text-gray-700 border-b-2 border-transparent">
@@ -54,7 +56,7 @@
                                 </button>
                             </x-slot>
                             <x-slot name="content">
-                                @if ($canImportTracer)
+                                @if ($canImportData)
                                     <x-dropdown-link :href="route('tracer.import.form')">Impor Data Tracer (Excel)</x-dropdown-link>
                                     <x-dropdown-link :href="route('employer.import.form')">Impor Data Pengguna Alumni (Excel)</x-dropdown-link>
                                 @endif
@@ -68,7 +70,7 @@
                         </x-dropdown>
                     @endif
 
-                    @if ($canManageUsers || $canManageMaster || $canManageQuestions || $canImportTracer || $canManageHomeContent)
+                    @if ($canManageUsers || $canManageMaster || $canManageQuestions || $canImportData || $canManageHomeContent)
                         <x-dropdown align="left" width="56">
                             <x-slot name="trigger">
                                 <button class="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-500 hover:text-gray-700 border-b-2 border-transparent">
@@ -80,7 +82,7 @@
                                 @if ($canManageUsers)
                                     <x-dropdown-link :href="route('admin.users.index')">Manajemen User</x-dropdown-link>
                                 @endif
-                                @if ($canImportTracer)
+                                @if ($canImportData)
                                     <x-dropdown-link :href="route('alumni.import.form')">Impor Data Alumni</x-dropdown-link>
                                 @endif
                                 @if ($canManageMaster)
@@ -152,7 +154,7 @@
             @unless ($isAlumni)
                 <x-responsive-nav-link :href="route('reports.index')" :active="request()->routeIs('reports.*')">{{ __('Laporan') }}</x-responsive-nav-link>
             @endunless
-            @if ($canImportTracer)
+            @if ($canImportData)
                 <x-responsive-nav-link :href="route('tracer.import.form')">Impor Data Tracer</x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('alumni.import.form')">Impor Data Alumni</x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('employer.import.form')">Impor Data Pengguna Alumni</x-responsive-nav-link>

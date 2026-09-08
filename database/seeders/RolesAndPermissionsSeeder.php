@@ -21,6 +21,11 @@ class RolesAndPermissionsSeeder extends Seeder
             'manage-master-data',
             'manage-questions',
             'fill-tracer',
+            // Bulk Excel import of tracer/alumni/pengguna-alumni data — a staff
+            // action, deliberately separate from fill-tracer so an Alumni
+            // account (which needs fill-tracer to fill in their own
+            // questionnaire) can't also bulk-upload data for other alumni.
+            'import-data',
             'view-dashboard',
             'export-data',
             'upload-report',
@@ -36,9 +41,9 @@ class RolesAndPermissionsSeeder extends Seeder
         $roleMap = [
             'Super Admin' => $permissions,
             'Admin Universitas' => array_diff($permissions, ['manage-home-content']),
-            'Admin Fakultas' => ['manage-users', 'fill-tracer', 'view-dashboard', 'export-data', 'upload-report'],
-            'Admin Prodi' => ['manage-users', 'fill-tracer', 'view-dashboard', 'export-data', 'upload-report'],
-            'Surveyor' => ['fill-tracer'],
+            'Admin Fakultas' => ['manage-users', 'fill-tracer', 'import-data', 'view-dashboard', 'export-data', 'upload-report'],
+            'Admin Prodi' => ['manage-users', 'fill-tracer', 'import-data', 'view-dashboard', 'export-data', 'upload-report'],
+            'Surveyor' => ['fill-tracer', 'import-data'],
             'Alumni' => ['fill-tracer'],
             'Pimpinan Universitas' => ['view-dashboard'],
             'Pimpinan Fakultas' => ['view-dashboard'],

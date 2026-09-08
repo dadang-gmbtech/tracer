@@ -116,7 +116,7 @@ class AlumniController extends Controller
 
     public function importForm(Request $request): View
     {
-        Gate::authorize('fill-tracer');
+        Gate::authorize('import-data');
 
         return view('alumni.import', [
             'faculties' => $this->selectableFaculties($request->user()),
@@ -125,14 +125,14 @@ class AlumniController extends Controller
 
     public function template(): BinaryFileResponse
     {
-        Gate::authorize('fill-tracer');
+        Gate::authorize('import-data');
 
         return Excel::download(new AlumniTemplateExport, 'template-data-alumni.xlsx');
     }
 
     public function import(Request $request): RedirectResponse
     {
-        Gate::authorize('fill-tracer');
+        Gate::authorize('import-data');
 
         $data = $request->validate([
             'file' => ['required', 'file', 'mimes:xlsx,xls,csv'],

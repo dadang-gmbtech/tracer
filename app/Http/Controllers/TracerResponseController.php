@@ -68,21 +68,21 @@ class TracerResponseController extends Controller
 
     public function importForm(): View
     {
-        Gate::authorize('fill-tracer');
+        Gate::authorize('import-data');
 
         return view('tracer.import');
     }
 
     public function template(): BinaryFileResponse
     {
-        Gate::authorize('fill-tracer');
+        Gate::authorize('import-data');
 
         return Excel::download(new TracerResponsesTemplateExport, 'template-data-tracer.xlsx');
     }
 
     public function import(Request $request): RedirectResponse
     {
-        Gate::authorize('fill-tracer');
+        Gate::authorize('import-data');
 
         $request->validate(['file' => ['required', 'file', 'mimes:xlsx,xls,csv']]);
 
