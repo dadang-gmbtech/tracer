@@ -117,4 +117,37 @@ class TracerFormTest extends TestCase
             ->get(route('tracer.edit', $alumni))
             ->assertForbidden();
     }
+
+    public function test_the_tracer_form_shows_the_button_to_generate_a_pengguna_alumni_link(): void
+    {
+        // Alumni land on this page straight after login (see
+        // User::postLoginUrl()) and never see alumni.show at all, so the
+        // "buat tautan" action needs to live here, not just on alumni.show.
+        $alumni = Alumni::factory()->create(['nim' => 'A1A002XYZ']);
+        $user = User::factory()->create(['nim' => $alumni->nim]);
+        $user->assignRole('Alumni');
+
+        $this->actingAs($user)
+            ->get(route('tracer.edit', $alumni))
+            ->assertOk()
+            ->assertSee('Buat Tautan Form Pengguna Alumni');
+    }
+
+    public function test_generating_a_pengguna_alumni_link_redirects_back_to_the_tracer_form_with_the_link(): void
+    {
+        $alumni = Alumni::factory()->create(['nim' => 'A1A003XYZ']);
+        $user = User::factory()->create(['nim' => $alumni->nim]);
+        $user->assignRole('Alumni');
+
+        $response = $this->actingAs($user)->post(route('tracer.share-link', $alumni));
+
+        $response->assertRedirect(route('tracer.edit', $alumni));
+        $this->assertNotNull($response->getSession()->get('employerLink'));
+
+        $this->actingAs($user)
+            ->withSession(['employerLink' => $response->getSession()->get('employerLink')])
+            ->get(route('tracer.edit', $alumni))
+            ->assertOk()
+            ->assertSee('Salin Link');
+    }
 }

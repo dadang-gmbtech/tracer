@@ -21,6 +21,41 @@
                 </div>
             @endif
 
+            @can('view', $alumni)
+                <section class="bg-white shadow-sm rounded-lg p-6 mb-6">
+                    <div class="flex items-center justify-between flex-wrap gap-3">
+                        <div>
+                            <h3 class="font-semibold text-gray-800">Form Pengguna Alumni</h3>
+                            <p class="text-xs text-gray-500 mt-1">
+                                Buat tautan untuk dikirim ke atasan/perusahaan tempat Anda bekerja, agar mereka
+                                bisa mengisi penilaian tanpa perlu login.
+                            </p>
+                        </div>
+                        <form method="POST" action="{{ route('tracer.share-link', $alumni) }}">
+                            @csrf
+                            <x-secondary-button type="submit">Buat Tautan Form Pengguna Alumni</x-secondary-button>
+                        </form>
+                    </div>
+
+                    @if (session('employerLink'))
+                        <div class="mt-4 bg-blue-50 text-blue-800 text-sm rounded-md p-4"
+                             x-data="{ copied: false, link: @js(session('employerLink')) }">
+                            <p class="font-medium mb-2">Tautan Form Pengguna Alumni (berlaku 30 hari):</p>
+                            <div class="flex items-center gap-2">
+                                <a :href="link" x-text="link" target="_blank" rel="noopener"
+                                   class="flex-1 truncate underline hover:text-blue-900"></a>
+                                <button type="button"
+                                        @click="navigator.clipboard.writeText(link); copied = true; setTimeout(() => copied = false, 2000)"
+                                        class="shrink-0 px-3 py-1.5 rounded-md border border-blue-300 text-blue-700 hover:bg-blue-100 text-xs font-medium">
+                                    <span x-show="!copied">Salin Link</span>
+                                    <span x-show="copied" x-cloak>Tersalin!</span>
+                                </button>
+                            </div>
+                        </div>
+                    @endif
+                </section>
+            @endcan
+
             <section class="bg-white shadow-sm rounded-lg p-6 mb-6">
                 <h3 class="font-semibold text-gray-800 mb-1">Identitas</h3>
                 <p class="text-xs text-gray-500 mb-4">Diambil otomatis dari Sistem Informasi Akademik — tidak dapat diubah di sini.</p>

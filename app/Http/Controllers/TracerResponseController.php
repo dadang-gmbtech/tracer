@@ -63,7 +63,11 @@ class TracerResponseController extends Controller
 
         $url = URL::temporarySignedRoute('employer.show', now()->addDays(30), ['alumni' => $alumni->id]);
 
-        return redirect()->route('alumni.show', $alumni)->with('employerLink', $url);
+        // Redirects back to the tracer form rather than alumni.show: that's
+        // the one page every role that can reach this action actually lands
+        // on (alumni are sent straight there after login and never see
+        // alumni.show at all — see User::postLoginUrl()).
+        return redirect()->route('tracer.edit', $alumni)->with('employerLink', $url);
     }
 
     public function importForm(): View

@@ -10,23 +10,6 @@
                 <div class="bg-green-50 text-green-700 text-sm rounded-md p-4">{{ session('status') }}</div>
             @endif
 
-            @if (session('employerLink'))
-                <div class="bg-blue-50 text-blue-800 text-sm rounded-md p-4"
-                     x-data="{ copied: false, link: @js(session('employerLink')) }">
-                    <p class="font-medium mb-2">Tautan Form Pengguna Alumni (berlaku 30 hari):</p>
-                    <div class="flex items-center gap-2">
-                        <a :href="link" x-text="link" target="_blank" rel="noopener"
-                           class="flex-1 truncate underline hover:text-blue-900"></a>
-                        <button type="button"
-                                @click="navigator.clipboard.writeText(link); copied = true; setTimeout(() => copied = false, 2000)"
-                                class="shrink-0 px-3 py-1.5 rounded-md border border-blue-300 text-blue-700 hover:bg-blue-100 text-xs font-medium">
-                            <span x-show="!copied">Salin Link</span>
-                            <span x-show="copied" x-cloak>Tersalin!</span>
-                        </button>
-                    </div>
-                </div>
-            @endif
-
             <div class="bg-white shadow-sm rounded-lg p-6 grid grid-cols-2 gap-4 text-sm">
                 <div><span class="text-gray-500">NIM</span><p class="font-medium">{{ $alumni->nim }}</p></div>
                 <div><span class="text-gray-500">Email</span><p class="font-medium">{{ $alumni->email }}</p></div>
