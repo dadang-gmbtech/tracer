@@ -130,9 +130,9 @@
                                                     </svg>
                                                 </a>
                                             @endif
-                                            @unless ($canFillTracer || $canManageAlumni)
-                                                <a href="{{ route('alumni.show', $a) }}" class="text-blue-600 hover:underline">Detail</a>
-                                            @endunless
+                                            {{-- Always reachable: this is also where "Buat Tautan Form Pengguna Alumni" lives. --}}
+                                            <a href="{{ route('alumni.show', $a) }}" title="Detail Alumni &amp; Form Pengguna Alumni"
+                                               class="text-sm text-blue-600 hover:underline">Detail</a>
                                         </div>
                                     </td>
                                 </tr>
