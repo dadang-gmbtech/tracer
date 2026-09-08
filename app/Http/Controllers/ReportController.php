@@ -69,7 +69,18 @@ class ReportController extends Controller
     {
         $this->authorize('view', $report);
 
-        return Storage::disk('public')->download($report->file_path, $report->title);
+        // title is a free-text label the uploader typed in and rarely
+        // carries the file's extension — downloading it as the filename
+        // as-is produces an extension-less file the OS doesn't know how to
+        // open, even though the content itself downloaded fine.
+        $extension = pathinfo($report->file_path, PATHINFO_EXTENSION);
+        $filename = $report->title;
+
+        if ($extension && ! str_ends_with(strtolower($filename), '.'.strtolower($extension))) {
+            $filename .= '.'.$extension;
+        }
+
+        return Storage::disk('public')->download($report->file_path, $filename);
     }
 
     public function destroy(Report $report): RedirectResponse
