@@ -40,21 +40,25 @@
                 </div>
                 <div x-show="['Admin Fakultas', 'Admin Prodi', 'Surveyor', 'Pimpinan Fakultas'].includes(role)">
                     <x-input-label for="faculty_id" value="Fakultas" />
-                    <select id="faculty_id" name="faculty_id" class="mt-1 w-full rounded-md border-gray-300 text-sm">
+                    <select id="faculty_id" name="faculty_id" class="mt-1 w-full rounded-md border-gray-300 text-sm"
+                            :required="['Admin Fakultas', 'Admin Prodi', 'Surveyor', 'Pimpinan Fakultas'].includes(role)">
                         <option value="">Pilih Fakultas</option>
                         @foreach ($faculties as $faculty)
                             <option value="{{ $faculty->id }}" @selected(old('faculty_id', $targetUser->faculty_id) == $faculty->id)>{{ $faculty->name }}</option>
                         @endforeach
                     </select>
+                    <x-input-error :messages="$errors->get('faculty_id')" class="mt-1" />
                 </div>
                 <div x-show="role === 'Admin Prodi'">
                     <x-input-label for="program_study_id" value="Program Studi" />
-                    <select id="program_study_id" name="program_study_id" class="mt-1 w-full rounded-md border-gray-300 text-sm">
+                    <select id="program_study_id" name="program_study_id" class="mt-1 w-full rounded-md border-gray-300 text-sm"
+                            :required="role === 'Admin Prodi'">
                         <option value="">Pilih Program Studi</option>
                         @foreach ($programStudies as $ps)
                             <option value="{{ $ps->id }}" @selected(old('program_study_id', $targetUser->program_study_id) == $ps->id)>{{ $ps->name }}</option>
                         @endforeach
                     </select>
+                    <x-input-error :messages="$errors->get('program_study_id')" class="mt-1" />
                 </div>
                 <div>
                     <x-input-label for="status" value="Status" />

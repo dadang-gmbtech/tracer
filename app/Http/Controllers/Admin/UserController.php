@@ -186,6 +186,16 @@ class UserController extends Controller
     private function validated(Request $request, ?User $user = null): array
     {
         $actor = $request->user();
+        $role = $request->input('role');
+
+        // faculty_id/program_study_id used to be unconditionally nullable —
+        // meaning a Fakultas/Prodi-scoped role could be created with no
+        // faculty at all, silently locking the account out of everything it
+        // should see (the scope queries just return nothing for a null
+        // faculty_id/program_study_id). Now required exactly when the
+        // selected role needs it.
+        $facultyRequired = in_array($role, ['Admin Fakultas', 'Admin Prodi', 'Surveyor', 'Pimpinan Fakultas'], true);
+        $programStudyRequired = $role === 'Admin Prodi';
 
         $rules = [
             'name' => ['required', 'string', 'max:255'],
@@ -197,8 +207,8 @@ class UserController extends Controller
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user)],
             'no_telp' => ['nullable', 'string', 'max:50'],
             'role' => ['required', 'string', 'in:'.implode(',', $this->assignableRoles($actor))],
-            'faculty_id' => ['nullable', 'exists:faculties,id'],
-            'program_study_id' => ['nullable', 'exists:program_studies,id'],
+            'faculty_id' => [$facultyRequired ? 'required' : 'nullable', 'exists:faculties,id'],
+            'program_study_id' => [$programStudyRequired ? 'required' : 'nullable', 'exists:program_studies,id'],
             'password' => [$user ? 'nullable' : 'required', 'nullable', 'string', 'min:8'],
             // Only editable on update — a new user is always created active.
             'status' => [$user ? 'required' : 'sometimes', 'string', 'in:active,inactive'],

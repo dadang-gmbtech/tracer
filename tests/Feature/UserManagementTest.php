@@ -64,15 +64,17 @@ class UserManagementTest extends TestCase
         // SQLite silently tolerate it, which is why this only broke in
         // production. Rule::unique()->ignore($user) must not regress this:
         // saving a user's own unchanged email must still succeed.
+        $faculty = Faculty::factory()->create();
         $admin = User::factory()->create();
         $admin->assignRole('Admin Universitas');
-        $target = User::factory()->create(['email' => 'tetap.sama@unsoed.ac.id']);
+        $target = User::factory()->create(['email' => 'tetap.sama@unsoed.ac.id', 'faculty_id' => $faculty->id]);
         $target->assignRole('Surveyor');
 
         $response = $this->actingAs($admin)->put(route('admin.users.update', $target), [
             'name' => 'Nama Baru',
             'email' => 'tetap.sama@unsoed.ac.id',
             'role' => 'Surveyor',
+            'faculty_id' => $faculty->id,
             'status' => 'active',
         ]);
 
@@ -99,15 +101,17 @@ class UserManagementTest extends TestCase
 
     public function test_admin_universitas_can_deactivate_a_user(): void
     {
+        $faculty = Faculty::factory()->create();
         $admin = User::factory()->create();
         $admin->assignRole('Admin Universitas');
-        $target = User::factory()->create(['status' => 'active']);
+        $target = User::factory()->create(['status' => 'active', 'faculty_id' => $faculty->id]);
         $target->assignRole('Surveyor');
 
         $response = $this->actingAs($admin)->put(route('admin.users.update', $target), [
             'name' => $target->name,
             'email' => $target->email,
             'role' => 'Surveyor',
+            'faculty_id' => $faculty->id,
             'status' => 'inactive',
         ]);
 
@@ -196,5 +200,58 @@ class UserManagementTest extends TestCase
             ->assertForbidden();
 
         $this->assertDatabaseHas('users', ['id' => $target->id]);
+    }
+
+    public function test_creating_an_admin_fakultas_without_a_faculty_is_rejected(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin Universitas');
+
+        // No faculty_id at all — used to silently create a broken Admin
+        // Fakultas account that could never see any alumni (every faculty-
+        // scoped query needs a real faculty_id to match against).
+        $response = $this->actingAs($admin)->post(route('admin.users.store'), [
+            'name' => 'Admin Fakultas Tanpa Fakultas',
+            'email' => 'tanpa.fakultas@unsoed.ac.id',
+            'password' => 'password123',
+            'role' => 'Admin Fakultas',
+        ]);
+
+        $response->assertSessionHasErrors('faculty_id');
+        $this->assertDatabaseMissing('users', ['email' => 'tanpa.fakultas@unsoed.ac.id']);
+    }
+
+    public function test_creating_an_admin_prodi_without_a_program_studi_is_rejected(): void
+    {
+        $faculty = Faculty::factory()->create();
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin Universitas');
+
+        $response = $this->actingAs($admin)->post(route('admin.users.store'), [
+            'name' => 'Admin Prodi Tanpa Prodi',
+            'email' => 'tanpa.prodi@unsoed.ac.id',
+            'password' => 'password123',
+            'role' => 'Admin Prodi',
+            'faculty_id' => $faculty->id,
+        ]);
+
+        $response->assertSessionHasErrors('program_study_id');
+        $this->assertDatabaseMissing('users', ['email' => 'tanpa.prodi@unsoed.ac.id']);
+    }
+
+    public function test_creating_an_admin_universitas_does_not_require_a_faculty(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin Universitas');
+
+        $response = $this->actingAs($admin)->post(route('admin.users.store'), [
+            'name' => 'Admin Universitas Baru',
+            'email' => 'admin.universitas.baru@unsoed.ac.id',
+            'password' => 'password123',
+            'role' => 'Admin Universitas',
+        ]);
+
+        $response->assertRedirect(route('admin.users.index'));
+        $this->assertDatabaseHas('users', ['email' => 'admin.universitas.baru@unsoed.ac.id', 'faculty_id' => null]);
     }
 }

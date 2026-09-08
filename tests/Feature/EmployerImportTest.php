@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\Alumni;
 use App\Models\EmployerResponse;
-use App\Models\Faculty;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -227,25 +226,8 @@ class EmployerImportTest extends TestCase
         $this->assertDatabaseMissing('employer_responses', []);
     }
 
-    public function test_admin_fakultas_cannot_add_feedback_for_an_alumni_outside_their_faculty(): void
-    {
-        $ownFaculty = Faculty::factory()->create();
-        $otherFaculty = Faculty::factory()->create();
-        $alumni = Alumni::factory()->create(['faculty_id' => $otherFaculty->id, 'nim' => 'A1A100DDD']);
-
-        $file = $this->csvFile([[
-            'nim' => $alumni->nim,
-            'nama_pengisi' => 'Contoh',
-            'nama_perusahaan' => 'PT Contoh',
-            'q1_kerja_sama_tim' => 1, 'q2_pengembangan_diri' => 1, 'q3_komunikasi' => 1,
-            'q4_teknologi_informasi' => 1, 'q5_bahasa_asing' => 1, 'q6_keahlian' => 1, 'q7_integritas' => 1,
-        ]]);
-
-        $admin = User::factory()->create(['faculty_id' => $ownFaculty->id]);
-        $admin->assignRole('Admin Fakultas');
-
-        $this->actingAs($admin)->post(route('employer.import'), ['file' => $file]);
-
-        $this->assertDatabaseMissing('employer_responses', ['alumni_id' => $alumni->id]);
-    }
+    // Admin Fakultas is no longer able to import Pengguna Alumni data at all
+    // (see ImportAccessTest::test_only_super_admin_and_admin_universitas_can_import_any_kind_of_data)
+    // — this used to test that they were at least confined to their own
+    // faculty, which is moot now that they can't reach this endpoint.
 }
