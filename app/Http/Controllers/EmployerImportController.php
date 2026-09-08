@@ -20,21 +20,21 @@ class EmployerImportController extends Controller
 {
     public function importForm(): View
     {
-        Gate::authorize('import-data');
+        Gate::authorize('import-employer-data');
 
         return view('employer.import');
     }
 
     public function template(): BinaryFileResponse
     {
-        Gate::authorize('import-data');
+        Gate::authorize('import-employer-data');
 
         return Excel::download(new EmployerResponseTemplateExport, 'template-pengguna-alumni.xlsx');
     }
 
     public function import(Request $request): RedirectResponse
     {
-        Gate::authorize('import-data');
+        Gate::authorize('import-employer-data');
 
         $request->validate(['file' => ['required', 'file', 'mimes:xlsx,xls,csv']]);
 

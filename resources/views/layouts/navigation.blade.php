@@ -5,9 +5,11 @@
     $canManageQuestions = $user->can('manage-questions');
     $canManageHomeContent = $user->can('manage-home-content');
     $canExport = $user->can('export-data');
-    // Bulk Excel import is a staff action — deliberately separate from
-    // fill-tracer, which Alumni also hold just to fill in their own form.
+    // Bulk import of tracer/alumni master data is Super Admin/Admin
+    // Universitas only; importing Pengguna Alumni feedback stays open to
+    // Admin Fakultas/Admin Prodi/Surveyor — two separate permissions.
     $canImportData = $user->can('import-data');
+    $canImportEmployerData = $user->can('import-employer-data');
     // Uses the policy (not a hardcoded role list) so Super Admin — who only
     // passes via the Gate::before bypass, not any role named here — sees the
     // link too.
@@ -47,7 +49,7 @@
                         </x-nav-link>
                     @endunless
 
-                    @if ($canExport || $canImportData)
+                    @if ($canExport || $canImportData || $canImportEmployerData)
                         <x-dropdown align="left" width="56">
                             <x-slot name="trigger">
                                 <button class="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-500 hover:text-gray-700 border-b-2 border-transparent">
@@ -58,6 +60,8 @@
                             <x-slot name="content">
                                 @if ($canImportData)
                                     <x-dropdown-link :href="route('tracer.import.form')">Impor Data Tracer (Excel)</x-dropdown-link>
+                                @endif
+                                @if ($canImportEmployerData)
                                     <x-dropdown-link :href="route('employer.import.form')">Impor Data Pengguna Alumni (Excel)</x-dropdown-link>
                                 @endif
                                 @if ($canExport)
@@ -157,6 +161,8 @@
             @if ($canImportData)
                 <x-responsive-nav-link :href="route('tracer.import.form')">Impor Data Tracer</x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('alumni.import.form')">Impor Data Alumni</x-responsive-nav-link>
+            @endif
+            @if ($canImportEmployerData)
                 <x-responsive-nav-link :href="route('employer.import.form')">Impor Data Pengguna Alumni</x-responsive-nav-link>
             @endif
             @if ($canManageUsers)

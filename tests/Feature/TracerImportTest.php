@@ -211,43 +211,8 @@ class TracerImportTest extends TestCase
         $this->assertDatabaseMissing('faculties', ['code' => 'someone@mhs.unsoed.ac.id']);
     }
 
-    public function test_admin_fakultas_cannot_import_tracer_data_for_alumni_outside_their_faculty(): void
-    {
-        $ownFaculty = Faculty::factory()->create();
-        $otherFaculty = Faculty::factory()->create();
-        $alumni = Alumni::factory()->create(['faculty_id' => $otherFaculty->id, 'nim' => 'A1A200BBB']);
-
-        $file = $this->csvFile([['nimhsmsmh' => $alumni->nim, 'f8' => 1]]);
-
-        $admin = User::factory()->create(['faculty_id' => $ownFaculty->id]);
-        $admin->assignRole('Admin Fakultas');
-
-        $this->actingAs($admin)->post(route('tracer.import'), ['file' => $file]);
-
-        $this->assertDatabaseMissing('tracer_responses', ['alumni_id' => $alumni->id]);
-    }
-
-    public function test_admin_fakultas_cannot_bootstrap_a_new_alumni_for_another_faculty(): void
-    {
-        $ownFaculty = Faculty::factory()->create(['code' => 'H']);
-
-        $file = $this->csvFile([[
-            'nimhsmsmh' => 'A1A400DDD',
-            'kodefak' => 'X', // not the admin's own faculty code
-            'namafakultas' => 'Fakultas Lain',
-            'kodeprog' => '99999',
-            'namaprogdikti' => 'Prodi Lain',
-            'f8' => 1,
-        ]]);
-
-        $admin = User::factory()->create(['faculty_id' => $ownFaculty->id]);
-        $admin->assignRole('Admin Fakultas');
-
-        $response = $this->actingAs($admin)->post(route('tracer.import'), ['file' => $file]);
-
-        $response->assertSessionHas('importSkipped', function (array $skipped) {
-            return count($skipped) === 1 && str_contains($skipped[0]['reason'], 'A1A400DDD');
-        });
-        $this->assertDatabaseMissing('alumni', ['nim' => 'A1A400DDD']);
-    }
+    // Admin Fakultas is no longer able to import tracer data at all (see
+    // ImportAccessTest::test_only_super_admin_and_admin_universitas_can_import_tracer_or_alumni_data)
+    // — this used to test that they were at least confined to their own
+    // faculty, which is moot now that they can't reach this endpoint.
 }

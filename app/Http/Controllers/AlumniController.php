@@ -7,10 +7,8 @@ use App\Imports\AlumniImport;
 use App\Models\Alumni;
 use App\Models\Faculty;
 use App\Models\StudyProgram;
-use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -118,8 +116,11 @@ class AlumniController extends Controller
     {
         Gate::authorize('import-data');
 
+        // Only Super Admin/Admin Universitas ever reach this (import-data is
+        // scoped to them), so unlike bio-data create()/edit() there's no
+        // per-faculty restriction to apply here.
         return view('alumni.import', [
-            'faculties' => $this->selectableFaculties($request->user()),
+            'faculties' => Faculty::orderBy('name')->get(),
         ]);
     }
 
@@ -139,41 +140,17 @@ class AlumniController extends Controller
             'faculty_id' => ['nullable', 'exists:faculties,id'],
         ]);
 
-        $actor = $request->user();
-
-        // Admin Fakultas/Surveyor can only ever bootstrap their own faculty.
-        $facultyId = $actor->hasAnyRole(['Admin Fakultas', 'Surveyor'])
-            ? $actor->faculty_id
-            : ($data['faculty_id'] ?? null);
-
         // A large/complex real-world file can push PhpSpreadsheet's peak
         // memory past PHP's default limit while parsing it.
         ini_set('memory_limit', '2048M');
         set_time_limit(300);
 
-        $import = new AlumniImport($actor, $facultyId ? Faculty::find($facultyId) : null);
+        $import = new AlumniImport($request->user(), ($data['faculty_id'] ?? null) ? Faculty::find($data['faculty_id']) : null);
         Excel::import($import, $request->file('file'));
 
         return redirect()->route('alumni.import.form')
             ->with('status', "{$import->created} alumni baru dibuat, {$import->updated} data alumni diperbarui.")
             ->with('importSkipped', $import->skipped);
-    }
-
-    /**
-     * Faculties the importing user is allowed to pick as the fallback
-     * faculty for rows whose program studi doesn't exist yet.
-     */
-    private function selectableFaculties(User $user): Collection
-    {
-        if ($user->hasAnyRole(['Super Admin', 'Admin Universitas'])) {
-            return Faculty::orderBy('name')->get();
-        }
-
-        if ($user->hasAnyRole(['Admin Fakultas', 'Surveyor']) && $user->faculty) {
-            return collect([$user->faculty]);
-        }
-
-        return collect();
     }
 
     /**

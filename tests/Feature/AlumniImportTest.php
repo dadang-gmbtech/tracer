@@ -316,56 +316,8 @@ class AlumniImportTest extends TestCase
         $this->assertDatabaseHas('alumni', ['nim' => 'A0A021006', 'faculty_id' => $faculty->id]);
     }
 
-    public function test_admin_fakultas_cannot_pick_another_faculty_for_the_import(): void
-    {
-        $ownFaculty = Faculty::factory()->create(['code' => 'H']);
-        $otherFaculty = Faculty::factory()->create(['code' => 'A']);
-
-        $file = $this->csvFile(
-            ['nim', 'nama', 'tahunlulus', 'kodeprog', 'namajenjang', 'namaprogdikti'],
-            [[
-                'nim' => 'A0A021007',
-                'nama' => 'Contoh Lima',
-                'tahunlulus' => 2025,
-                'kodeprog' => '54402',
-                'namajenjang' => 'D3',
-                'namaprogdikti' => 'Peternakan',
-            ]]
-        );
-
-        $admin = User::factory()->create(['faculty_id' => $ownFaculty->id]);
-        $admin->assignRole('Admin Fakultas');
-
-        // Even if a malicious/mistaken request tries to pick another faculty,
-        // the server always forces the admin's own faculty_id.
-        $this->actingAs($admin)->post(route('alumni.import'), [
-            'file' => $file,
-            'faculty_id' => $otherFaculty->id,
-        ]);
-
-        $this->assertDatabaseHas('alumni', ['nim' => 'A0A021007', 'faculty_id' => $ownFaculty->id]);
-        $this->assertDatabaseMissing('alumni', ['nim' => 'A0A021007', 'faculty_id' => $otherFaculty->id]);
-    }
-
-    public function test_admin_fakultas_cannot_create_alumni_for_a_program_studi_outside_their_faculty(): void
-    {
-        $ownFaculty = Faculty::factory()->create(['code' => 'H']);
-        $otherFaculty = Faculty::factory()->create(['code' => 'A']);
-        $otherProdi = StudyProgram::factory()->create(['code' => '54401', 'faculty_id' => $otherFaculty->id]);
-
-        $file = $this->csvFile(
-            ['nim', 'nama', 'kodeprog'],
-            [['nim' => 'A0A021005', 'nama' => 'Contoh Tiga', 'kodeprog' => $otherProdi->code]]
-        );
-
-        $admin = User::factory()->create(['faculty_id' => $ownFaculty->id]);
-        $admin->assignRole('Admin Fakultas');
-
-        $response = $this->actingAs($admin)->post(route('alumni.import'), ['file' => $file]);
-
-        $response->assertSessionHas('importSkipped', function (array $skipped) {
-            return count($skipped) === 1 && str_contains($skipped[0]['reason'], 'A0A021005');
-        });
-        $this->assertDatabaseMissing('alumni', ['nim' => 'A0A021005']);
-    }
+    // Admin Fakultas is no longer able to import alumni data at all (see
+    // ImportAccessTest::test_only_super_admin_and_admin_universitas_can_import_tracer_or_alumni_data)
+    // — this used to test that they were at least confined to their own
+    // faculty, which is moot now that they can't reach this endpoint.
 }
