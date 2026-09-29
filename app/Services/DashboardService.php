@@ -19,7 +19,32 @@ class DashboardService
      */
     private const IKU_ELIGIBLE_LEVELS = ['D3', 'S1'];
 
+    /** @var Collection<int, Alumni>|null Cached alumni for the current request. */
+    private ?Collection $cachedAlumni = null;
+
+    /** @var Collection<string, UmpSalary>|null Cached UMP lookup for the current request. */
+    private ?Collection $cachedUmp = null;
+
     public function __construct(private readonly IkuCalculatorService $iku) {}
+
+    /**
+     * Load all alumni (with ALL relations eager-loaded) once and cache on
+     * this service instance. Every subsequent call reuses the same collection,
+     * so summary(), facultyRecap(), monthlyBreakdown() and alumniByProvince()
+     * together cost exactly ONE database round-trip instead of 3-4.
+     *
+     * @param  array{faculty_id?: int, program_study_id?: int, jenjang?: list<string>}  $filters
+     */
+    public function loadAlumni(User $user, array $filters = []): Collection
+    {
+        if ($this->cachedAlumni === null) {
+            $this->cachedAlumni = $this->scopedAlumni($user, $filters)
+                ->with(['tracerResponse.workProvince', 'faculty', 'studyProgram'])
+                ->get();
+        }
+
+        return $this->cachedAlumni;
+    }
 
     /**
      * Role-scoped, per-graduation-year aggregation used by the main dashboard
@@ -29,7 +54,7 @@ class DashboardService
      */
     public function summary(User $user, array $filters = []): array
     {
-        $alumni = $this->scopedAlumni($user, $filters)->with(['tracerResponse', 'studyProgram'])->get();
+        $alumni = $this->loadAlumni($user, $filters);
         $years = $this->yearRange($alumni);
         $umpByProvinceYear = $this->umpLookup();
 
@@ -49,10 +74,7 @@ class DashboardService
      */
     public function facultyRecap(User $user, int $year, array $filters = []): array
     {
-        $alumni = $this->scopedAlumni($user, $filters)
-            ->where('graduation_year', $year)
-            ->with(['tracerResponse', 'faculty', 'studyProgram'])
-            ->get();
+        $alumni = $this->loadAlumni($user, $filters)->where('graduation_year', $year);
 
         $umpLookup = $this->umpLookup();
 
@@ -141,7 +163,7 @@ class DashboardService
      */
     public function alumniByProvince(User $user, array $filters = []): array
     {
-        $alumni = $this->scopedAlumni($user, $filters)->with('tracerResponse.workProvince')->get();
+        $alumni = $this->loadAlumni($user, $filters);
 
         return $alumni
             ->map(fn (Alumni $a) => $a->tracerResponse?->workProvince)
@@ -173,10 +195,7 @@ class DashboardService
      */
     public function monthlyBreakdown(User $user, int $yearA, int $yearB, array $filters = []): array
     {
-        $alumni = $this->scopedAlumni($user, $filters)
-            ->whereIn('graduation_year', [$yearA, $yearB])
-            ->with('tracerResponse')
-            ->get();
+        $alumni = $this->loadAlumni($user, $filters)->whereIn('graduation_year', [$yearA, $yearB]);
 
         $months = range(1, 12);
         $table = [];
@@ -238,11 +257,18 @@ class DashboardService
     }
 
     /**
+     * Load UMP once per instance and cache — avoids a second UmpSalary::all()
+     * call when summary() and facultyRecap() both need it.
+     *
      * @return Collection<string, UmpSalary> keyed by "province_id-year"
      */
     private function umpLookup(): Collection
     {
-        return UmpSalary::all()->keyBy(fn (UmpSalary $u) => $u->province_id.'-'.$u->year);
+        if ($this->cachedUmp === null) {
+            $this->cachedUmp = UmpSalary::all()->keyBy(fn (UmpSalary $u) => $u->province_id.'-'.$u->year);
+        }
+
+        return $this->cachedUmp;
     }
 
     private function percent(float $numerator, int $denominator): float

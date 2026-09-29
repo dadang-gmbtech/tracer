@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\DashboardService;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class DashboardTest extends TestCase
@@ -55,6 +56,52 @@ class DashboardTest extends TestCase
             ->assertSee('Rekap Tracer Berdasarkan Fakultas')
             ->assertSee('Fakultas A')
             ->assertSee('Fakultas B');
+    }
+
+    public function test_dashboard_defaults_the_faculty_recap_to_the_latest_real_year_not_the_current_calendar_year(): void
+    {
+        // Regression: a cache layer used to resolve recap_year's default by
+        // peeking a separate years-only cache that started out empty,
+        // silently defaulting to now()->year and showing an empty recap for
+        // any faculty whose actual data isn't from the current calendar year.
+        $faculty = Faculty::factory()->create();
+        $alumni = Alumni::factory()->create(['faculty_id' => $faculty->id, 'graduation_year' => 2019]);
+        TracerResponse::factory()->create(['alumni_id' => $alumni->id, 'f8' => 1]);
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+
+        // No recap_year (or year_a/year_b) in the request — must be resolved
+        // from the real data, not defaulted to the current year (there is no
+        // 2026 data here at all).
+        $response = $this->actingAs($admin)->get(route('dashboard'));
+
+        $response->assertOk();
+        $this->assertSame(2019, $response->viewData('recapYear'));
+        $this->assertSame(2019, $response->viewData('yearB'));
+        $this->assertSame(1, $response->viewData('facultyRecap')['total']['jumlah_alumni']);
+    }
+
+    public function test_loading_the_dashboard_only_queries_the_alumni_table_once(): void
+    {
+        // summary(), facultyRecap(), monthlyBreakdown() and alumniByProvince()
+        // each used to run their own identical scoped alumni query — four
+        // round-trips against a table with well over 100k rows in
+        // production. DashboardService::loadAlumni() memoizes it to one.
+        $faculty = Faculty::factory()->create();
+        $alumni = Alumni::factory()->create(['faculty_id' => $faculty->id, 'graduation_year' => 2024]);
+        TracerResponse::factory()->create(['alumni_id' => $alumni->id, 'f8' => 1]);
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+
+        DB::enableQueryLog();
+        $this->actingAs($admin)->get(route('dashboard', ['recap_year' => 2024]))->assertOk();
+        $alumniQueries = collect(DB::getQueryLog())->filter(fn (array $q) => str_contains($q['query'], '"alumni"'));
+        DB::flushQueryLog();
+        DB::disableQueryLog();
+
+        $this->assertCount(1, $alumniQueries, $alumniQueries->pluck('query')->implode("\n"));
     }
 
     public function test_pimpinan_fakultas_only_sees_their_faculty_data(): void

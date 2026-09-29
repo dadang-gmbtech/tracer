@@ -15,6 +15,9 @@ use Illuminate\Support\Collection;
  */
 class EmployerDashboardService
 {
+    /** @var Collection<int, EmployerResponse>|null Cached scoped responses for the current request. */
+    private ?Collection $cachedResponses = null;
+
     /**
      * @var array<string, string>
      */
@@ -29,11 +32,29 @@ class EmployerDashboardService
     ];
 
     /**
+     * Load the scoped responses once and cache on this service instance —
+     * summary(), facultyRecap() and indeksPerFacultyPerYear() used to each
+     * run their own identical query (2-3 DB round-trips per request);
+     * they now share one.
+     *
+     * @param  array{faculty_id?: int, program_study_id?: int}  $filters
+     * @return Collection<int, EmployerResponse>
+     */
+    public function loadResponses(User $user, array $filters = []): Collection
+    {
+        if ($this->cachedResponses === null) {
+            $this->cachedResponses = $this->scopedResponses($user, $filters)->get();
+        }
+
+        return $this->cachedResponses;
+    }
+
+    /**
      * @param  array{faculty_id?: int, program_study_id?: int}  $filters
      */
     public function summary(User $user, array $filters = []): array
     {
-        $responses = $this->scopedResponses($user, $filters)->get();
+        $responses = $this->loadResponses($user, $filters);
         $years = $this->yearRange($responses);
 
         $perYear = [];
@@ -55,7 +76,7 @@ class EmployerDashboardService
      */
     public function facultyRecap(User $user, int $year, array $filters = []): array
     {
-        $responses = $this->scopedResponses($user, $filters)->get()
+        $responses = $this->loadResponses($user, $filters)
             ->filter(fn (EmployerResponse $r) => (int) $r->alumni->graduation_year === $year);
 
         $rows = $responses->groupBy(fn (EmployerResponse $r) => $r->alumni->faculty_id)
@@ -86,7 +107,7 @@ class EmployerDashboardService
      */
     public function indeksPerFacultyPerYear(User $user, array $facultyIds, array $filters = []): array
     {
-        $responses = $this->scopedResponses($user, $filters)->get();
+        $responses = $this->loadResponses($user, $filters);
         $years = $this->yearRange($responses);
 
         $facultyResponses = [];

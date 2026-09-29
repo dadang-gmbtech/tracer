@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\EmployerDashboardService;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class EmployerDashboardTest extends TestCase
@@ -191,5 +192,62 @@ class EmployerDashboardTest extends TestCase
         $this->actingAs($user)
             ->get(route('employer.dashboard'))
             ->assertRedirect(route('tracer.edit', $alumni));
+    }
+
+    public function test_the_faculty_recap_defaults_to_the_latest_real_year_not_the_current_calendar_year(): void
+    {
+        $faculty = Faculty::factory()->create();
+        $alumni = Alumni::factory()->create(['faculty_id' => $faculty->id, 'graduation_year' => 2019]);
+        EmployerResponse::factory()->create(['alumni_id' => $alumni->id]);
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+
+        $response = $this->actingAs($admin)->get(route('employer.dashboard'));
+
+        $response->assertOk();
+        $this->assertSame(2019, $response->viewData('recapYear'));
+        $this->assertSame(1, $response->viewData('facultyRecap')['total']['jumlah_respon']);
+    }
+
+    public function test_loading_the_dashboard_only_queries_employer_responses_once(): void
+    {
+        // summary() and facultyRecap() used to each run their own identical
+        // scoped query. EmployerDashboardService::loadResponses() memoizes
+        // it to one per request.
+        $faculty = Faculty::factory()->create();
+        $alumni = Alumni::factory()->create(['faculty_id' => $faculty->id, 'graduation_year' => 2024]);
+        EmployerResponse::factory()->create(['alumni_id' => $alumni->id]);
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+
+        DB::enableQueryLog();
+        $this->actingAs($admin)->get(route('employer.dashboard', ['recap_year' => 2024]))->assertOk();
+        $responseQueries = collect(DB::getQueryLog())->filter(fn (array $q) => str_contains($q['query'], '"employer_responses"'));
+        DB::flushQueryLog();
+        DB::disableQueryLog();
+
+        $this->assertCount(1, $responseQueries, $responseQueries->pluck('query')->implode("\n"));
+    }
+
+    public function test_repeated_requests_with_the_same_filters_return_consistent_cached_data(): void
+    {
+        $faculty = Faculty::factory()->create();
+        $alumni = Alumni::factory()->create(['faculty_id' => $faculty->id, 'graduation_year' => 2024]);
+        EmployerResponse::factory()->create(['alumni_id' => $alumni->id]);
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+
+        $first = $this->actingAs($admin)->get(route('employer.dashboard', ['recap_year' => 2024]));
+        $second = $this->actingAs($admin)->get(route('employer.dashboard', ['recap_year' => 2024]));
+
+        $first->assertOk();
+        $second->assertOk();
+        $this->assertSame(
+            $first->viewData('facultyRecap')['total']['jumlah_respon'],
+            $second->viewData('facultyRecap')['total']['jumlah_respon']
+        );
     }
 }

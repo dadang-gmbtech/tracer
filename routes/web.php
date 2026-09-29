@@ -32,7 +32,7 @@ Route::middleware('guest')->group(function () {
 
 // Registered before the public signed-URL group below so these static paths
 // (auth-required) never fall through to the /pengguna-alumni/{alumni} wildcard.
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard/pengguna-alumni', [EmployerDashboardController::class, 'index'])->name('employer.dashboard');
     Route::get('/pengguna-alumni/import', [EmployerImportController::class, 'importForm'])->name('employer.import.form');
     Route::get('/pengguna-alumni/import/template', [EmployerImportController::class, 'template'])->name('employer.import.template');
@@ -47,7 +47,7 @@ Route::middleware('signed')->group(function () {
     Route::post('/pengguna-alumni/{alumni}', [EmployerResponseController::class, 'store'])->name('employer.store');
 });
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
