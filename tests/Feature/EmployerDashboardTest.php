@@ -231,7 +231,7 @@ class EmployerDashboardTest extends TestCase
         $this->assertCount(1, $responseQueries, $responseQueries->pluck('query')->implode("\n"));
     }
 
-    public function test_repeated_requests_with_the_same_filters_return_consistent_cached_data(): void
+    public function test_repeated_requests_with_the_same_filters_return_consistent_data(): void
     {
         $faculty = Faculty::factory()->create();
         $alumni = Alumni::factory()->create(['faculty_id' => $faculty->id, 'graduation_year' => 2024]);
