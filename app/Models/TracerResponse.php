@@ -24,7 +24,7 @@ class TracerResponse extends Model
     protected $fillable = [
         'alumni_id', 'work_province_id', 'work_city_id',
         'submitted_by_user_id', 'submitted_at',
-        'f8', 'f504', 'f502', 'f505', 'f506', 'f5a1', 'f5a2',
+        'f8', 'f504', 'f502', 'f505', 'f506', 'f5a0', 'f5a1', 'f5a2',
         'f1101', 'f1102', 'f5b', 'f5c', 'f5d', 'f5e',
         'f18a', 'f18b', 'f18c', 'f18d',
         'f1201', 'f1202', 'f14', 'f15',

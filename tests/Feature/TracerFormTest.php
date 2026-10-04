@@ -66,6 +66,7 @@ class TracerFormTest extends TestCase
             'alumni_id' => $alumni->id,
             'f8' => 1,
             'work_province_id' => $province->id,
+            'f5a0' => 'ID',
             'f5a1' => $province->code,
         ]);
     }

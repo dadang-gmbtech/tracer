@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Alumni;
 use App\Models\Faculty;
+use App\Models\StudyProgram;
 use App\Models\User;
 use App\Support\TracerFieldCodes;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -23,18 +24,27 @@ class TracerImportTest extends TestCase
 
     private function csvFile(array $rows): UploadedFile
     {
+        // Built with fputcsv rather than a plain implode(','): one of the
+        // real headers ("Tahun Lulus\n Keluar") contains an embedded
+        // newline, which a naive comma-join would split into a stray extra
+        // line instead of keeping it quoted inside a single CSV field.
         $headers = TracerFieldCodes::exportColumns();
-        $lines = [implode(',', $headers)];
+        $stream = fopen('php://temp', 'w+');
+        fputcsv($stream, $headers);
 
         foreach ($rows as $overrides) {
             $row = array_fill_keys($headers, '');
             foreach ($overrides as $key => $value) {
                 $row[$key] = $value;
             }
-            $lines[] = implode(',', array_map(fn ($h) => $row[$h], $headers));
+            fputcsv($stream, array_map(fn ($h) => $row[$h], $headers));
         }
 
-        return UploadedFile::fake()->createWithContent('tracer.csv', implode("\n", $lines));
+        rewind($stream);
+        $content = stream_get_contents($stream);
+        fclose($stream);
+
+        return UploadedFile::fake()->createWithContent('tracer.csv', $content);
     }
 
     public function test_the_template_download_is_a_lightweight_file_not_the_whole_dataset(): void
@@ -58,13 +68,13 @@ class TracerImportTest extends TestCase
         $alumni = Alumni::factory()->create(['nim' => 'A1A100AAA']);
 
         $file = $this->csvFile([[
-            'nimhsmsmh' => $alumni->nim,
-            'f8' => 1,
-            'f502' => 2,
-            'f505' => 4500000,
-            'f1201' => 1,
-            'f14' => 1,
-            'f15' => 2,
+            'NIM/Nomor Mhs' => $alumni->nim,
+            'F8' => 1,
+            'F502' => 2,
+            'F505' => 4500000,
+            'F1201' => 1,
+            'F14' => 1,
+            'F15' => 2,
         ]]);
 
         $admin = User::factory()->create();
@@ -80,15 +90,17 @@ class TracerImportTest extends TestCase
         ]);
     }
 
-    public function test_f504_column_is_not_part_of_the_export_or_import_columns(): void
+    public function test_f504_and_f506_columns_are_not_part_of_the_export_or_import_columns(): void
     {
-        $this->assertNotContains('f504', TracerFieldCodes::exportColumns());
         $this->assertNotContains('f504', TracerFieldCodes::codes());
+        $this->assertNotContains('f506', TracerFieldCodes::codes());
+        $this->assertNotContains('F504', TracerFieldCodes::exportColumns());
+        $this->assertNotContains('F506', TracerFieldCodes::exportColumns());
     }
 
-    public function test_unknown_nim_without_faculty_info_is_skipped_and_reported(): void
+    public function test_unknown_nim_without_a_resolvable_prodi_code_is_skipped_and_reported(): void
     {
-        $file = $this->csvFile([['nimhsmsmh' => 'TIDAKADA123', 'f8' => 1]]);
+        $file = $this->csvFile([['NIM/Nomor Mhs' => 'TIDAKADA123', 'F8' => 1]]);
 
         $admin = User::factory()->create();
         $admin->assignRole('Admin Universitas');
@@ -108,8 +120,8 @@ class TracerImportTest extends TestCase
         // TracerResponsesImport::chunkSize()), not a plain array index —
         // this guards against that offset math being wrong.
         $file = $this->csvFile([
-            ['nimhsmsmh' => 'A1A100AAA', 'f8' => 1],
-            ['nimhsmsmh' => 'TIDAKADA999', 'f8' => 1],
+            ['NIM/Nomor Mhs' => 'A1A100AAA', 'F8' => 1],
+            ['NIM/Nomor Mhs' => 'TIDAKADA999', 'F8' => 1],
         ]);
         Alumni::factory()->create(['nim' => 'A1A100AAA']);
 
@@ -123,19 +135,26 @@ class TracerImportTest extends TestCase
         });
     }
 
-    public function test_admin_universitas_can_bootstrap_a_new_alumni_and_its_faculty_from_a_full_row(): void
+    public function test_admin_universitas_can_bootstrap_a_new_alumni_from_an_existing_study_program_code(): void
     {
+        // This format only carries a prodi CODE (no name/level/faculty
+        // columns), so bootstrapping a new alumni relies entirely on that
+        // code already being registered as master data.
+        $faculty = Faculty::factory()->create(['code' => 'H', 'name' => 'Teknik']);
+        $studyProgram = StudyProgram::factory()->create([
+            'code' => '55201',
+            'name' => 'Informatika',
+            'level' => 'S1',
+            'faculty_id' => $faculty->id,
+        ]);
+
         $file = $this->csvFile([[
-            'nimhsmsmh' => 'A1A300CCC',
-            'nmmhsmsmh' => 'Contoh Alumni Baru',
-            'emailmsmh' => 'contoh@example.com',
-            'tahun_lulus' => 2024,
-            'kodefak' => 'H',
-            'namafakultas' => 'Teknik',
-            'kodeprog' => '55201',
-            'namajenjang' => 'S1',
-            'namaprogdikti' => 'Informatika',
-            'f8' => 1,
+            'NIM/Nomor Mhs' => 'A1A300CCC',
+            'Nama Mhs' => 'Contoh Alumni Baru',
+            'Email Mhs' => 'contoh@example.com',
+            "Tahun Lulus\n Keluar" => 2024,
+            'Kode Prodi' => $studyProgram->code,
+            'F8' => 1,
         ]]);
 
         $admin = User::factory()->create();
@@ -144,71 +163,36 @@ class TracerImportTest extends TestCase
         $response = $this->actingAs($admin)->post(route('tracer.import'), ['file' => $file]);
 
         $response->assertRedirect(route('tracer.import.form'));
-        $this->assertDatabaseHas('alumni', ['nim' => 'A1A300CCC', 'nama' => 'Contoh Alumni Baru']);
-        $this->assertDatabaseHas('faculties', ['code' => 'H', 'name' => 'Teknik']);
-        $this->assertDatabaseHas('program_studies', ['code' => '55201', 'name' => 'Informatika']);
+        $this->assertDatabaseHas('alumni', [
+            'nim' => 'A1A300CCC',
+            'nama' => 'Contoh Alumni Baru',
+            'faculty_id' => $faculty->id,
+            'program_study_id' => $studyProgram->id,
+        ]);
         $this->assertDatabaseHas('tracer_responses', ['f8' => 1]);
 
         // No real tanggal_lahir is available from this format, so no login account is created.
         $this->assertDatabaseMissing('users', ['nim' => 'A1A300CCC']);
     }
 
-    public function test_faculty_is_guessed_from_the_nims_first_letter_when_kodefak_is_missing(): void
+    public function test_a_prodi_code_that_does_not_exist_cannot_bootstrap_a_new_alumni(): void
     {
-        Faculty::factory()->create(['code' => 'H', 'name' => 'Teknik']);
-
         $file = $this->csvFile([[
-            'nimhsmsmh' => 'H1D019099', // starts with "H" -> matches the existing "Teknik" faculty
-            'nmmhsmsmh' => 'Contoh Tebakan NIM',
-            'tahun_lulus' => 2024,
-            // kodefak/namafakultas intentionally left blank
-            'kodeprog' => '55201',
-            'namajenjang' => 'S1',
-            'namaprogdikti' => 'Informatika',
-            'f8' => 1,
+            'NIM/Nomor Mhs' => 'A1A300CCC',
+            'Nama Mhs' => 'Contoh Alumni Baru',
+            'Kode Prodi' => '99999',
+            'F8' => 1,
         ]]);
 
         $admin = User::factory()->create();
         $admin->assignRole('Admin Universitas');
 
-        $this->actingAs($admin)->post(route('tracer.import'), ['file' => $file]);
+        $response = $this->actingAs($admin)->post(route('tracer.import'), ['file' => $file]);
 
-        $this->assertDatabaseHas('alumni', [
-            'nim' => 'H1D019099',
-            'faculty_id' => Faculty::where('code', 'H')->value('id'),
-        ]);
-        $this->assertDatabaseHas('program_studies', ['code' => '55201', 'name' => 'Informatika']);
-    }
-
-    public function test_an_implausible_kodefak_value_is_ignored_in_favor_of_guessing_from_the_nim(): void
-    {
-        // A misaligned column in a real export once put a student's email
-        // address in kodefak — trusting it at face value created a garbage
-        // faculty (see FacultyCodeGuesser::normalize()). It should be
-        // rejected and fall through to the NIM-based guess instead.
-        Faculty::factory()->create(['code' => 'H', 'name' => 'Teknik']);
-
-        $file = $this->csvFile([[
-            'nimhsmsmh' => 'H1D019099',
-            'nmmhsmsmh' => 'Contoh Kodefak Rusak',
-            'tahun_lulus' => 2024,
-            'kodefak' => 'someone@mhs.unsoed.ac.id',
-            'kodeprog' => '55201',
-            'namajenjang' => 'S1',
-            'namaprogdikti' => 'Informatika',
-            'f8' => 1,
-        ]]);
-
-        $admin = User::factory()->create();
-        $admin->assignRole('Admin Universitas');
-
-        $this->actingAs($admin)->post(route('tracer.import'), ['file' => $file]);
-
-        $this->assertDatabaseHas('alumni', [
-            'nim' => 'H1D019099',
-            'faculty_id' => Faculty::where('code', 'H')->value('id'),
-        ]);
-        $this->assertDatabaseMissing('faculties', ['code' => 'someone@mhs.unsoed.ac.id']);
+        $response->assertSessionHas('importSkipped', function (array $skipped) {
+            return count($skipped) === 1 && str_contains($skipped[0]['reason'], 'kode prodi tidak ditemukan');
+        });
+        $this->assertDatabaseMissing('alumni', ['nim' => 'A1A300CCC']);
     }
 
     // Admin Fakultas is no longer able to import tracer data at all (see

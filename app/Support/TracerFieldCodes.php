@@ -5,8 +5,10 @@ namespace App\Support;
 /**
  * Single source of truth for the Kemdiktisaintek tracer field codes, shared
  * by TracerResponsesExport and the tracer import so their column order can
- * never drift apart. f504 is intentionally excluded (undocumented field,
- * dropped from both import and export per admin request).
+ * never drift apart. Column order matches the official "Pelaporan Tracer
+ * Study" reporting template exactly, so an export can be uploaded straight
+ * to the national system and an edited copy can be re-imported here. f504
+ * and f506 are intentionally excluded — they aren't part of that template.
  */
 class TracerFieldCodes
 {
@@ -16,11 +18,15 @@ class TracerFieldCodes
         return array_map(
             fn ($code) => "f{$code}",
             [
-                8, 502, 505, 506, '5a1', '5a2', 1101, 1102, '5b', '5c', '5d', '5e',
-                '18a', '18b', '18c', '18d', 1201, 1202, 14, 15,
-                ...range(1761, 1782), ...range(21, 37),
-                301, 302, 303, ...range(401, 416),
-                6, 7, '7a', 1001, 1002, ...range(1601, 1614),
+                8, 502, 505, '5c', '18a', '18b', '18c', '18d', '5b',
+                '5a0', '5a1', '5a2', '5e', 1101, 1102, '5d', 14, 15,
+                301, 302, 303, ...range(401, 409), 411, 413, 414, 415, 416,
+                6, 7, '7a', 1001, 1002,
+                ...range(1601, 1610), 1612, 1613, 1614,
+                1201, 1202,
+                1761, 1763, 1765, 1767, 1769, 1771, 1773, 1775, 1777, 1779, 1781,
+                1762, 1764, 1766, 1768, 1770, 1772, 1774, 1776, 1778, 1780, 1782,
+                ...range(21, 37),
             ]
         );
     }
@@ -29,12 +35,9 @@ class TracerFieldCodes
     public static function exportColumns(): array
     {
         return [
-            'kdptimsmh', 'kdpstmsmh', 'nimhsmsmh', 'nmmhsmsmh', 'telpomsmh', 'emailmsmh',
-            'tahun_lulus', 'nik', 'npwp',
-            ...self::codes(),
-            'emailunsoed', 'kodefak', 'namafakultas', 'kodeprog', 'namajenjang', 'namaprogdikti',
-            'waktu_update', 'propinsi_tempat_bekerja', 'kabupaten_tempat_bekerja',
-            'datarespondendikti_id', 'idkuesionerdikti',
+            'Kode PT', 'Kode Prodi', 'NIM/Nomor Mhs', 'Nama Mhs', 'Nomor HP Mhs', 'Email Mhs',
+            "Tahun Lulus\n Keluar", 'NIK', 'NPWP',
+            ...array_map('strtoupper', self::codes()),
         ];
     }
 

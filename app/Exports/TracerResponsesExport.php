@@ -10,8 +10,9 @@ use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 
 /**
- * Column order matches Contoh data.csv (the national Kemdiktisaintek tracer
- * export), minus f504, so the file can be edited and re-imported via
+ * Column order matches the official "Pelaporan Tracer Study" national
+ * reporting template exactly, minus f504/f506, so the file can be uploaded
+ * straight to the national system and an edited copy re-imported via
  * TracerResponsesImport.
  *
  * Reads via FromQuery + WithChunkReading rather than loading every matching
@@ -30,7 +31,7 @@ class TracerResponsesExport implements FromQuery, WithChunkReading, WithHeadings
         // FromQuery's docblock) — without a unique, deterministic order,
         // LIMIT/OFFSET paging can skip or duplicate rows across chunks.
         return $this->alumniQuery
-            ->with(['faculty', 'studyProgram', 'tracerResponse.workProvince', 'tracerResponse.workCity'])
+            ->with(['studyProgram', 'tracerResponse'])
             ->orderBy('id');
     }
 
@@ -63,18 +64,6 @@ class TracerResponsesExport implements FromQuery, WithChunkReading, WithHeadings
         foreach (TracerFieldCodes::codes() as $code) {
             $row[] = $r?->{$code};
         }
-
-        $row[] = $alumni->email;
-        $row[] = $alumni->faculty?->code;
-        $row[] = $alumni->faculty?->name;
-        $row[] = $alumni->studyProgram?->code;
-        $row[] = $alumni->studyProgram?->level;
-        $row[] = $alumni->studyProgram?->name;
-        $row[] = $r?->submitted_at?->format('Y-m-d H:i:s');
-        $row[] = $r?->workProvince?->name;
-        $row[] = $r?->workCity?->name;
-        $row[] = null; // datarespondendikti_id — not synced with the national system
-        $row[] = null; // idkuesionerdikti — not synced with the national system
 
         return $row;
     }

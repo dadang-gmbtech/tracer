@@ -24,9 +24,9 @@
             <div class="bg-white shadow-sm rounded-lg p-6 space-y-4">
                 <div class="text-sm text-gray-600 space-y-2">
                     <p>
-                        Susunan kolom mengikuti file <strong>Ekspor Data Tracer</strong> (kolom identitas, seluruh
-                        kode pertanyaan f8–f1614, hingga kolom lokasi kerja) — kolom <code>f504</code> tidak
-                        dipakai.
+                        Susunan kolom mengikuti template resmi <strong>Pelaporan Tracer Study</strong> (Kode PT,
+                        Kode Prodi, NIM/Nomor Mhs, ..., F8 sampai F37) — file yang sama bisa diunggah ke sistem
+                        pelaporan nasional atau diedit lalu diunggah ulang di sini.
                     </p>
                     <p>
                         Untuk mengisi data baru, unduh <strong>Template Excel</strong> di bawah (cuma header kolom +
@@ -35,10 +35,12 @@
                         tersimpan, jadi bisa besar dan lama kalau alumninya sudah banyak.
                     </p>
                     <p>
-                        Setiap baris dicocokkan lewat kolom <strong>nimhsmsmh</strong> (NIM). Kalau NIM belum
-                        terdaftar, data alumni (beserta fakultas/prodi kalau belum ada) akan <strong>dibuat
-                        otomatis</strong> dari kolom identitas di baris yang sama (kdptimsmh s.d. namaprogdikti),
-                        lalu jawaban tracer-nya disimpan. Baris di luar cakupan Anda akan dilewati dan dilaporkan.
+                        Setiap baris dicocokkan lewat kolom <strong>NIM/Nomor Mhs</strong>. Kalau NIM belum
+                        terdaftar, data alumni akan <strong>dibuat otomatis</strong> dari kolom identitas di baris
+                        yang sama — tapi kolom <strong>Kode Prodi</strong>-nya harus sudah terdaftar sebagai master
+                        data Program Studi (nama/jenjang/fakultasnya diambil dari situ, bukan dari file). Baris
+                        dengan kode prodi yang tidak ditemukan, atau di luar cakupan Anda, akan dilewati dan
+                        dilaporkan.
                     </p>
                     <p class="text-amber-700">
                         Catatan: alumni yang dibuat lewat impor ini <strong>belum bisa login</strong> (NIM &

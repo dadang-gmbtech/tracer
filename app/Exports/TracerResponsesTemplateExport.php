@@ -26,17 +26,13 @@ class TracerResponsesTemplateExport implements FromArray, WithHeadings
         $row = array_fill_keys(TracerFieldCodes::exportColumns(), '');
 
         $row = array_merge($row, [
-            'nimhsmsmh' => 'A1A021001',
-            'nmmhsmsmh' => 'Contoh Nama Alumni',
-            'tahun_lulus' => '2024',
-            'kodefak' => 'A',
-            'namafakultas' => 'Pertanian',
-            'kodeprog' => '54401',
-            'namajenjang' => 'S1',
-            'namaprogdikti' => 'Agroteknologi',
-            'f8' => '1',
-            'f502' => '3',
-            'f505' => '4500000',
+            'Kode Prodi' => '54401',
+            'NIM/Nomor Mhs' => 'A1A021001',
+            'Nama Mhs' => 'Contoh Nama Alumni',
+            "Tahun Lulus\n Keluar" => '2024',
+            'F8' => '1',
+            'F502' => '3',
+            'F505' => '4500000',
         ]);
 
         return [array_values($row)];
