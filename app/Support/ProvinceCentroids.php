@@ -29,6 +29,10 @@ class ProvinceCentroids
         'BENGKULU' => [-3.795, 102.259],
         'LAMPUNG' => [-4.558, 105.407],
         'KEPULAUAN BANGKA BELITUNG' => [-2.741, 106.440],
+        // The official master-wilayah import (master_wilayah_negara_provinsi_kota_kabupaten.xlsx)
+        // names this province just "Bangka Belitung" — kept as an alias so
+        // the map marker survives re-importing that file.
+        'BANGKA BELITUNG' => [-2.741, 106.440],
         'KEPULAUAN RIAU' => [3.945, 108.142],
         'D.K.I. JAKARTA' => [-6.208, 106.845],
         'DKI JAKARTA' => [-6.208, 106.845],

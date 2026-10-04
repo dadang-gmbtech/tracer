@@ -1,8 +1,8 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex items-center justify-between">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">{{ __('Provinsi') }}</h2>
-            <a href="{{ route('admin.provinces.create') }}" class="text-sm text-blue-600 hover:underline">+ Tambah Provinsi</a>
+            <h2 class="font-semibold text-xl text-gray-800 leading-tight">{{ __('Negara') }}</h2>
+            <a href="{{ route('admin.countries.create') }}" class="text-sm text-blue-600 hover:underline">+ Tambah Negara</a>
         </div>
     </x-slot>
 
@@ -15,8 +15,8 @@
             <div class="bg-white shadow-sm rounded-lg p-4">
                 <p class="text-sm font-medium text-gray-700 mb-2">Impor massal via Excel</p>
                 <div class="flex flex-wrap items-center gap-3">
-                    <a href="{{ route('admin.provinces.template') }}" class="text-sm text-blue-600 hover:underline">Unduh Template</a>
-                    <form method="POST" action="{{ route('admin.provinces.import') }}" enctype="multipart/form-data" class="flex items-center gap-2">
+                    <a href="{{ route('admin.countries.template') }}" class="text-sm text-blue-600 hover:underline">Unduh Template</a>
+                    <form method="POST" action="{{ route('admin.countries.import') }}" enctype="multipart/form-data" class="flex items-center gap-2">
                         @csrf
                         <input type="file" name="file" required class="text-sm">
                         <x-secondary-button type="submit">Impor</x-secondary-button>
@@ -30,31 +30,31 @@
                         <tr>
                             <th class="px-4 py-3">Kode</th>
                             <th class="px-4 py-3">Nama</th>
-                            <th class="px-4 py-3">Negara</th>
-                            <th class="px-4 py-3">Jumlah Kab/Kota</th>
+                            <th class="px-4 py-3">Jumlah Provinsi</th>
                             <th class="px-4 py-3"></th>
                         </tr>
                     </thead>
                     <tbody class="divide-y">
-                        @foreach ($provinces as $province)
+                        @forelse ($countries as $country)
                             <tr>
-                                <td class="px-4 py-3">{{ $province->code }}</td>
-                                <td class="px-4 py-3">{{ $province->name }}</td>
-                                <td class="px-4 py-3">{{ $province->country?->name ?? '-' }}</td>
-                                <td class="px-4 py-3">{{ $province->cities_count }}</td>
+                                <td class="px-4 py-3">{{ $country->code }}</td>
+                                <td class="px-4 py-3">{{ $country->name }}</td>
+                                <td class="px-4 py-3">{{ $country->provinces_count }}</td>
                                 <td class="px-4 py-3 space-x-3">
-                                    <a href="{{ route('admin.provinces.edit', $province) }}" class="text-blue-600 hover:underline">Edit</a>
-                                    <form method="POST" action="{{ route('admin.provinces.destroy', $province) }}" class="inline" onsubmit="return confirm('Hapus provinsi ini?')">
+                                    <a href="{{ route('admin.countries.edit', $country) }}" class="text-blue-600 hover:underline">Edit</a>
+                                    <form method="POST" action="{{ route('admin.countries.destroy', $country) }}" class="inline" onsubmit="return confirm('Hapus negara ini?')">
                                         @csrf @method('DELETE')
                                         <button class="text-red-600 hover:underline">Hapus</button>
                                     </form>
                                 </td>
                             </tr>
-                        @endforeach
+                        @empty
+                            <tr><td colspan="4" class="px-4 py-6 text-center text-gray-400">Belum ada data.</td></tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
-            {{ $provinces->links() }}
+            {{ $countries->links() }}
         </div>
     </div>
 </x-app-layout>

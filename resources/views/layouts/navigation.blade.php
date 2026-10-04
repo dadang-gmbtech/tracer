@@ -89,6 +89,7 @@
                                 @if ($canManageMaster)
                                     <x-dropdown-link :href="route('admin.faculties.index')">Fakultas</x-dropdown-link>
                                     <x-dropdown-link :href="route('admin.program-studies.index')">Program Studi</x-dropdown-link>
+                                    <x-dropdown-link :href="route('admin.countries.index')">Negara</x-dropdown-link>
                                     <x-dropdown-link :href="route('admin.provinces.index')">Provinsi</x-dropdown-link>
                                     <x-dropdown-link :href="route('admin.cities.index')">Kabupaten/Kota</x-dropdown-link>
                                     <x-dropdown-link :href="route('admin.ump.index')">Upah Minimum Provinsi</x-dropdown-link>
@@ -165,6 +166,7 @@
             @endif
             @if ($canManageMaster)
                 <x-responsive-nav-link :href="route('admin.faculties.index')">Fakultas</x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('admin.countries.index')">Negara</x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('admin.provinces.index')">Provinsi</x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('admin.cities.index')">Kabupaten/Kota</x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('admin.ump.index')">UMP</x-responsive-nav-link>

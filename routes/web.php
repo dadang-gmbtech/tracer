@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\CityController;
+use App\Http\Controllers\Admin\CountryController;
 use App\Http\Controllers\Admin\FacultyController;
 use App\Http\Controllers\Admin\HomeContentController;
 use App\Http\Controllers\Admin\ProgramStudyController;
@@ -102,6 +103,12 @@ Route::middleware(['auth'])->group(function () {
             ->except(['show'])
             ->parameters(['program-studies' => 'programStudy']);
 
+        Route::get('countries/template', [CountryController::class, 'template'])->name('countries.template');
+        Route::post('countries/import', [CountryController::class, 'import'])->name('countries.import');
+        Route::resource('countries', CountryController::class)->except(['show']);
+
+        Route::get('provinces/template', [ProvinceController::class, 'template'])->name('provinces.template');
+        Route::post('provinces/import', [ProvinceController::class, 'import'])->name('provinces.import');
         Route::resource('provinces', ProvinceController::class)->except(['show']);
 
         Route::get('cities/template', [CityController::class, 'template'])->name('cities.template');

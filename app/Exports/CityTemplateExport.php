@@ -9,13 +9,13 @@ class CityTemplateExport implements FromArray, WithHeadings
 {
     public function headings(): array
     {
-        return ['kode_provinsi', 'kode_kota', 'nama_kota'];
+        return ['Kode Wilayah Negara', 'Negara', 'Kode Wilayah Provinsi', 'Provinsi', 'Kode Wilayah Kota/Kabupaten', 'Kota/Kabupaten'];
     }
 
     public function array(): array
     {
         return [
-            ['32', '3216', 'Kab. Bekasi'],
+            ['ID', 'Indonesia', '020000', 'Prov. Jawa Barat', '020500', 'Kab. Bekasi'],
         ];
     }
 }

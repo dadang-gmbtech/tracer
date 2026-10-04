@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Contracts\AcademicInfoServiceContract;
 use App\Contracts\SsoLoginServiceContract;
 use App\Models\City;
+use App\Models\Country;
 use App\Models\Faculty;
 use App\Models\Province;
 use App\Models\StudyProgram;
@@ -34,7 +35,7 @@ class AppServiceProvider extends ServiceProvider
     {
         Gate::before(fn (User $user, string $ability) => $user->hasRole('Super Admin') ? true : null);
 
-        foreach ([Faculty::class, StudyProgram::class, Province::class, City::class, UmpSalary::class] as $model) {
+        foreach ([Faculty::class, StudyProgram::class, Country::class, Province::class, City::class, UmpSalary::class] as $model) {
             Gate::policy($model, MasterDataPolicy::class);
         }
     }

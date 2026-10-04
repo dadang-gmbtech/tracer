@@ -2,11 +2,16 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Exports\ProvinceTemplateExport;
 use App\Http\Controllers\Controller;
+use App\Imports\ProvincesImport;
+use App\Models\Country;
 use App\Models\Province;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ProvinceController extends Controller
 {
@@ -15,7 +20,7 @@ class ProvinceController extends Controller
         $this->authorize('viewAny', Province::class);
 
         return view('admin.provinces.index', [
-            'provinces' => Province::withCount('cities')->orderBy('name')->paginate(40),
+            'provinces' => Province::withCount('cities')->with('country')->orderBy('name')->paginate(40),
         ]);
     }
 
@@ -23,7 +28,7 @@ class ProvinceController extends Controller
     {
         $this->authorize('create', Province::class);
 
-        return view('admin.provinces.create');
+        return view('admin.provinces.create', ['countries' => Country::orderBy('name')->get()]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -31,6 +36,7 @@ class ProvinceController extends Controller
         $this->authorize('create', Province::class);
 
         Province::create($request->validate([
+            'country_id' => ['nullable', 'exists:countries,id'],
             'code' => ['required', 'string', 'max:10', 'unique:provinces,code'],
             'name' => ['required', 'string', 'max:255'],
         ]));
@@ -42,7 +48,7 @@ class ProvinceController extends Controller
     {
         $this->authorize('update', $province);
 
-        return view('admin.provinces.edit', ['province' => $province]);
+        return view('admin.provinces.edit', ['province' => $province, 'countries' => Country::orderBy('name')->get()]);
     }
 
     public function update(Request $request, Province $province): RedirectResponse
@@ -50,6 +56,7 @@ class ProvinceController extends Controller
         $this->authorize('update', $province);
 
         $province->update($request->validate([
+            'country_id' => ['nullable', 'exists:countries,id'],
             'code' => ['required', 'string', 'max:10', 'unique:provinces,code,'.$province->id],
             'name' => ['required', 'string', 'max:255'],
         ]));
@@ -64,5 +71,25 @@ class ProvinceController extends Controller
         $province->delete();
 
         return redirect()->route('admin.provinces.index')->with('status', 'Provinsi berhasil dihapus.');
+    }
+
+    public function template(): BinaryFileResponse
+    {
+        $this->authorize('create', Province::class);
+
+        return Excel::download(new ProvinceTemplateExport, 'template-provinsi.xlsx');
+    }
+
+    public function import(Request $request): RedirectResponse
+    {
+        $this->authorize('create', Province::class);
+
+        $request->validate(['file' => ['required', 'file', 'mimes:xlsx,xls,csv']]);
+
+        $import = new ProvincesImport;
+        Excel::import($import, $request->file('file'));
+
+        return redirect()->route('admin.provinces.index')
+            ->with('status', "{$import->created} provinsi baru dibuat, {$import->updated} provinsi diperbarui.");
     }
 }

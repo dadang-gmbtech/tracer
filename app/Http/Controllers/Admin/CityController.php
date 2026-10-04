@@ -90,6 +90,6 @@ class CityController extends Controller
         Excel::import($import, $request->file('file'));
 
         return redirect()->route('admin.cities.index')
-            ->with('status', "{$import->imported} kabupaten/kota berhasil diimpor.");
+            ->with('status', "{$import->created} kabupaten/kota baru dibuat, {$import->updated} diperbarui, {$import->skipped} dilewati (provinsi tidak ditemukan).");
     }
 }

@@ -8,7 +8,17 @@
             <form method="POST" action="{{ route('admin.provinces.store') }}" class="bg-white shadow-sm rounded-lg p-6 space-y-4">
                 @csrf
                 <div>
-                    <x-input-label for="code" value="Kode Provinsi (BPS)" />
+                    <x-input-label for="country_id" value="Negara" />
+                    <select id="country_id" name="country_id" class="mt-1 w-full rounded-md border-gray-300 text-sm">
+                        <option value="">Pilih Negara</option>
+                        @foreach ($countries as $country)
+                            <option value="{{ $country->id }}" @selected(old('country_id') == $country->id)>{{ $country->name }}</option>
+                        @endforeach
+                    </select>
+                    <x-input-error :messages="$errors->get('country_id')" class="mt-1" />
+                </div>
+                <div>
+                    <x-input-label for="code" value="Kode Wilayah Provinsi" />
                     <x-text-input id="code" name="code" class="mt-1 w-full" :value="old('code')" required />
                     <x-input-error :messages="$errors->get('code')" class="mt-1" />
                 </div>
