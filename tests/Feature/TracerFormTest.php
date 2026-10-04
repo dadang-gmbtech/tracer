@@ -44,12 +44,20 @@ class TracerFormTest extends TestCase
             'work_province_id' => $province->id,
             'work_city_id' => $city->id,
             'f1101' => 3,
+            'f5b' => 'PT Contoh Sejahtera',
+            'f5d' => 1,
             'f1201' => 1,
             'f14' => 1,
             'f15' => 2,
             'f301' => 3,
+            'f404' => 1,
+            'f6' => 5,
+            'f7' => 2,
+            'f7a' => 1,
+            'f1001' => 1,
+            'f1601' => 1,
             ...array_fill_keys(array_map(fn ($c) => "f{$c}", [
-                1761, 1762, 1763, 1764, 1765, 1766, 1767, 1768, 1769, 1770, 1771, 1772, 1773, 1774,
+                ...range(1761, 1782), ...range(21, 37),
             ]), 4),
         ]);
 
@@ -60,6 +68,172 @@ class TracerFormTest extends TestCase
             'work_province_id' => $province->id,
             'f5a1' => $province->code,
         ]);
+    }
+
+    public function test_submitting_the_bekerja_branch_without_its_required_fields_is_rejected(): void
+    {
+        $alumni = Alumni::factory()->create(['nim' => 'A1A004XYZ']);
+        $user = User::factory()->create(['nim' => $alumni->nim]);
+        $user->assignRole('Alumni');
+
+        $response = $this->actingAs($user)->put(route('tracer.update', $alumni), [
+            'f8' => 1,
+            'f1201' => 1,
+            ...array_fill_keys(array_map(fn ($c) => "f{$c}", [
+                ...range(1761, 1782), ...range(21, 37),
+            ]), 4),
+        ]);
+
+        $response->assertSessionHasErrors([
+            'f502', 'f505', 'work_province_id', 'work_city_id', 'f1101', 'f5b', 'f5d', 'f14', 'f15', 'f301',
+        ]);
+    }
+
+    public function test_alumni_can_submit_the_wirausaha_branch(): void
+    {
+        $alumni = Alumni::factory()->create(['nim' => 'A1A005XYZ']);
+        $province = Province::factory()->create();
+        $city = City::factory()->create(['province_id' => $province->id]);
+        $user = User::factory()->create(['nim' => $alumni->nim]);
+        $user->assignRole('Alumni');
+
+        $response = $this->actingAs($user)->put(route('tracer.update', $alumni), [
+            'f8' => 3,
+            'f502' => 1,
+            'f505' => 3_000_000,
+            'f5c' => 1,
+            'f5b' => 'Toko Online Saya',
+            'f5e' => 1,
+            'f5d' => 1,
+            'work_province_id' => $province->id,
+            'work_city_id' => $city->id,
+            'f14' => 1,
+            'f15' => 2,
+            'f301' => 1,
+            'f302' => 2,
+            'f1606' => 1,
+            'f1201' => 1,
+            ...array_fill_keys(array_map(fn ($c) => "f{$c}", [
+                ...range(1761, 1782), ...range(21, 37),
+            ]), 4),
+        ]);
+
+        $response->assertRedirect(route('alumni.show', $alumni));
+        $this->assertDatabaseHas('tracer_responses', [
+            'alumni_id' => $alumni->id,
+            'f8' => 3,
+            'f5c' => 1,
+            'f5e' => 1,
+        ]);
+    }
+
+    public function test_wirausaha_branch_rejects_the_retired_staff_option_for_f5c(): void
+    {
+        $alumni = Alumni::factory()->create(['nim' => 'A1A006XYZ']);
+        $province = Province::factory()->create();
+        $city = City::factory()->create(['province_id' => $province->id]);
+        $user = User::factory()->create(['nim' => $alumni->nim]);
+        $user->assignRole('Alumni');
+
+        $response = $this->actingAs($user)->put(route('tracer.update', $alumni), [
+            'f8' => 3,
+            'f502' => 1,
+            'f505' => 3_000_000,
+            'f5c' => 3, // "Staff" — no longer a valid option on the new form
+            'f5b' => 'Toko Online Saya',
+            'f5e' => 1,
+            'f5d' => 1,
+            'work_province_id' => $province->id,
+            'work_city_id' => $city->id,
+            'f14' => 1,
+            'f15' => 2,
+            'f301' => 1,
+            'f302' => 2,
+            'f1606' => 1,
+            'f1201' => 1,
+            ...array_fill_keys(array_map(fn ($c) => "f{$c}", [
+                ...range(1761, 1782), ...range(21, 37),
+            ]), 4),
+        ]);
+
+        $response->assertSessionHasErrors('f5c');
+    }
+
+    public function test_alumni_can_submit_the_melanjutkan_pendidikan_branch(): void
+    {
+        $alumni = Alumni::factory()->create(['nim' => 'A1A007XYZ']);
+        $province = Province::factory()->create();
+        $city = City::factory()->create(['province_id' => $province->id]);
+        $user = User::factory()->create(['nim' => $alumni->nim]);
+        $user->assignRole('Alumni');
+
+        $response = $this->actingAs($user)->put(route('tracer.update', $alumni), [
+            'f8' => 4,
+            'f18a' => 2,
+            'f18b' => 'Universitas Gadjah Mada',
+            'f18c' => 'Magister Manajemen',
+            'f18d' => '2026-02-01',
+            'work_province_id' => $province->id,
+            'work_city_id' => $city->id,
+            'f14' => 1,
+            'f1201' => 1,
+            ...array_fill_keys(array_map(fn ($c) => "f{$c}", [
+                ...range(1761, 1782), ...range(21, 37),
+            ]), 4),
+        ]);
+
+        $response->assertRedirect(route('alumni.show', $alumni));
+        $this->assertDatabaseHas('tracer_responses', [
+            'alumni_id' => $alumni->id,
+            'f8' => 4,
+            'f18b' => 'Universitas Gadjah Mada',
+        ]);
+
+        // f15 doesn't exist for this branch — must not be required.
+        $response->assertSessionDoesntHaveErrors('f15');
+    }
+
+    public function test_alumni_can_submit_the_mencari_kerja_branch(): void
+    {
+        $alumni = Alumni::factory()->create(['nim' => 'A1A008XYZ']);
+        $user = User::factory()->create(['nim' => $alumni->nim]);
+        $user->assignRole('Alumni');
+
+        $response = $this->actingAs($user)->put(route('tracer.update', $alumni), [
+            'f8' => 5,
+            'f301' => 1,
+            'f302' => 3,
+            'f404' => 1,
+            'f6' => 4,
+            'f7' => 1,
+            'f7a' => 0,
+            'f1001' => 2,
+            'f1201' => 1,
+            ...array_fill_keys(array_map(fn ($c) => "f{$c}", [
+                ...range(1761, 1782), ...range(21, 37),
+            ]), 3),
+        ]);
+
+        $response->assertRedirect(route('alumni.show', $alumni));
+        $this->assertDatabaseHas('tracer_responses', ['alumni_id' => $alumni->id, 'f8' => 5]);
+    }
+
+    public function test_belum_memungkinkan_bekerja_branch_only_needs_the_universal_fields(): void
+    {
+        $alumni = Alumni::factory()->create(['nim' => 'A1A009XYZ']);
+        $user = User::factory()->create(['nim' => $alumni->nim]);
+        $user->assignRole('Alumni');
+
+        $response = $this->actingAs($user)->put(route('tracer.update', $alumni), [
+            'f8' => 2,
+            'f1201' => 1,
+            ...array_fill_keys(array_map(fn ($c) => "f{$c}", [
+                ...range(1761, 1782), ...range(21, 37),
+            ]), 3),
+        ]);
+
+        $response->assertRedirect(route('alumni.show', $alumni));
+        $this->assertDatabaseHas('tracer_responses', ['alumni_id' => $alumni->id, 'f8' => 2]);
     }
 
     public function test_alumni_lands_on_their_own_tracer_form_right_after_logging_in(): void

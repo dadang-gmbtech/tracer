@@ -25,7 +25,7 @@ class TracerResponse extends Model
         'alumni_id', 'work_province_id', 'work_city_id',
         'submitted_by_user_id', 'submitted_at',
         'f8', 'f504', 'f502', 'f505', 'f506', 'f5a1', 'f5a2',
-        'f1101', 'f1102', 'f5b', 'f5c', 'f5d',
+        'f1101', 'f1102', 'f5b', 'f5c', 'f5d', 'f5e',
         'f18a', 'f18b', 'f18c', 'f18d',
         'f1201', 'f1202', 'f14', 'f15',
         'f301', 'f302', 'f303', 'f416',
@@ -35,8 +35,8 @@ class TracerResponse extends Model
     public function __construct(array $attributes = [])
     {
         foreach (array_merge(
-            range(1761, 1774),
-            range(21, 27),
+            range(1761, 1782),
+            range(21, 37),
             range(401, 415),
             range(1601, 1613),
         ) as $code) {

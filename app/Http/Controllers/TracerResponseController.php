@@ -40,8 +40,11 @@ class TracerResponseController extends Controller
     public function update(TracerFormRequest $request, Alumni $alumni): RedirectResponse
     {
         $data = $request->validated();
-        $data['f5a1'] = $data['work_province_id'] ? Province::find($data['work_province_id'])?->code : null;
-        $data['f5a2'] = $data['work_city_id'] ? City::find($data['work_city_id'])?->code : null;
+        // work_province_id/work_city_id aren't asked at all for some F8
+        // branches (belum bekerja, mencari kerja) — the form doesn't render
+        // those fields there, so they're absent from the request entirely.
+        $data['f5a1'] = ($data['work_province_id'] ?? null) ? Province::find($data['work_province_id'])?->code : null;
+        $data['f5a2'] = ($data['work_city_id'] ?? null) ? City::find($data['work_city_id'])?->code : null;
         $data['submitted_by_user_id'] = $request->user()->id;
         $data['submitted_at'] = now();
 
