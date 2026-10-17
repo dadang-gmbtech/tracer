@@ -7,9 +7,9 @@
         <div class="max-w-2xl mx-auto sm:px-6 lg:px-8 space-y-6">
             <div class="bg-white shadow-sm rounded-lg p-6 space-y-4">
                 <p class="text-sm text-gray-600">
-                    Menghasilkan dokumen PDF berisi ringkasan eksekutif, rekap per fakultas, tren beberapa tahun
-                    terakhir, dan hasil kuesioner Pengguna Alumni — dibuat langsung dari data yang sudah ada, tanpa
-                    perlu diunggah manual.
+                    Menghasilkan dokumen PDF laporan tracer study (responden, status lulusan, masa tunggu, pendapatan,
+                    tempat kerja, relevansi pekerjaan, metode pembelajaran, dan lainnya), tren beberapa tahun terakhir,
+                    dan hasil kuesioner Pengguna Alumni — dibuat langsung dari data yang sudah ada.
                 </p>
 
                 <form method="GET" action="{{ route('reports.auto.download') }}" class="space-y-4">
@@ -33,6 +33,19 @@
                             </select>
                         </div>
                     @endif
+
+                    <div>
+                        <x-input-label value="Jenjang" />
+                        <div class="mt-1 flex gap-4 items-center">
+                            @foreach ($levels as $level)
+                                <label class="flex items-center gap-1 text-sm">
+                                    <input type="checkbox" name="jenjang[]" value="{{ $level }}" class="rounded">
+                                    {{ $level }}
+                                </label>
+                            @endforeach
+                        </div>
+                        <p class="mt-1 text-xs text-gray-500">Kosongkan semua untuk menyertakan seluruh jenjang.</p>
+                    </div>
 
                     <div>
                         <x-input-label for="year" value="Tahun Lulus" />

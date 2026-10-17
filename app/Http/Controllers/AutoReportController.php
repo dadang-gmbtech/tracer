@@ -21,6 +21,8 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class AutoReportController extends Controller
 {
+    private const LEVELS = ['D3', 'S1', 'S2', 'S3'];
+
     public function form(Request $request): View
     {
         Gate::authorize('export-data');
@@ -32,6 +34,7 @@ class AutoReportController extends Controller
             'faculties' => $isUniversityScoped ? Faculty::orderBy('name')->get() : collect(),
             'programStudies' => $isUniversityScoped ? StudyProgram::orderBy('name')->get() : collect(),
             'defaultYear' => now()->year,
+            'levels' => self::LEVELS,
         ]);
     }
 
@@ -45,6 +48,7 @@ class AutoReportController extends Controller
         $filters = array_filter([
             'faculty_id' => $request->integer('faculty_id') ?: null,
             'program_study_id' => $request->integer('program_study_id') ?: null,
+            'jenjang' => array_values(array_intersect((array) $request->input('jenjang', []), self::LEVELS)) ?: null,
         ]);
 
         $summary = $dashboard->summary($user, $filters);
@@ -67,9 +71,20 @@ class AutoReportController extends Controller
     }
 
     /**
-     * @param  array{faculty_id?: int, program_study_id?: int}  $filters
+     * @param  array{faculty_id?: int, program_study_id?: int, jenjang?: list<string>}  $filters
      */
     private function scopeLabel(User $user, array $filters): ?string
+    {
+        $unit = $this->unitLabel($user, $filters);
+        $jenjang = empty($filters['jenjang']) ? null : 'Jenjang '.implode(', ', $filters['jenjang']);
+
+        return implode(' — ', array_filter([$unit, $jenjang])) ?: null;
+    }
+
+    /**
+     * @param  array{faculty_id?: int, program_study_id?: int, jenjang?: list<string>}  $filters
+     */
+    private function unitLabel(User $user, array $filters): ?string
     {
         if (! empty($filters['program_study_id'])) {
             return StudyProgram::find($filters['program_study_id'])?->name;

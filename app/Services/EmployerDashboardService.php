@@ -37,7 +37,7 @@ class EmployerDashboardService
      * run their own identical query (2-3 DB round-trips per request);
      * they now share one.
      *
-     * @param  array{faculty_id?: int, program_study_id?: int}  $filters
+     * @param  array{faculty_id?: int, program_study_id?: int, jenjang?: list<string>}  $filters
      * @return Collection<int, EmployerResponse>
      */
     public function loadResponses(User $user, array $filters = []): Collection
@@ -50,7 +50,7 @@ class EmployerDashboardService
     }
 
     /**
-     * @param  array{faculty_id?: int, program_study_id?: int}  $filters
+     * @param  array{faculty_id?: int, program_study_id?: int, jenjang?: list<string>}  $filters
      */
     public function summary(User $user, array $filters = []): array
     {
@@ -72,7 +72,7 @@ class EmployerDashboardService
     }
 
     /**
-     * @param  array{faculty_id?: int, program_study_id?: int}  $filters
+     * @param  array{faculty_id?: int, program_study_id?: int, jenjang?: list<string>}  $filters
      */
     public function facultyRecap(User $user, int $year, array $filters = []): array
     {
@@ -102,7 +102,7 @@ class EmployerDashboardService
      * kind of difference this comparison is meant to surface.
      *
      * @param  list<int>  $facultyIds
-     * @param  array{faculty_id?: int, program_study_id?: int}  $filters
+     * @param  array{faculty_id?: int, program_study_id?: int, jenjang?: list<string>}  $filters
      * @return array{years: list<int>, per_pertanyaan: array<string, array{label: string, series: array<string, array<int, float>>}>}
      */
     public function indeksPerFacultyPerYear(User $user, array $facultyIds, array $filters = []): array
@@ -186,6 +186,10 @@ class EmployerDashboardService
 
                 if (! empty($filters['program_study_id'])) {
                     $query->where('program_study_id', $filters['program_study_id']);
+                }
+
+                if (! empty($filters['jenjang'])) {
+                    $query->whereHas('studyProgram', fn ($q) => $q->whereIn('level', (array) $filters['jenjang']));
                 }
             })
             ->with(['alumni.faculty', 'alumni.studyProgram']);
