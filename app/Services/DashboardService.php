@@ -248,7 +248,107 @@ class DashboardService
                 '>10 juta' => $gaji->filter(fn ($v) => $v >= 10_000_000)->count(),
             ],
             'tempat_kerja' => $this->groupByProvince($alumni),
+            'f14' => $this->countBy($responses, 'f14', [
+                1 => 'Sangat relevan', 2 => 'Relevan', 3 => 'Cukup relevan', 4 => 'Kurang relevan', 5 => 'Tidak relevan',
+            ]),
+            'f15' => $this->countBy($responses, 'f15', [
+                1 => 'Setingkat lebih tinggi', 2 => 'Tingkat yang sama', 3 => 'Setingkat lebih rendah', 4 => 'Tidak perlu pendidikan tinggi',
+            ]),
+            'jenis_instansi' => $this->countBy($responses, 'f1101', [
+                3 => 'Perusahaan swasta', 1 => 'Instansi/lembaga pemerintah', 5 => 'Lainnya',
+                6 => 'BUMN/BUMD', 7 => 'Institusi/organisasi multilateral', 2 => 'Institusi/organisasi nirlaba',
+            ], sortByCount: true),
+            'ruang_lingkup' => $this->countBy($responses, 'f5d', [
+                1 => 'Lokal/Wilayah', 2 => 'Nasional', 3 => 'Multinasional/Internasional',
+            ]),
+            'cara_mencari_kerja' => $this->caraMencariKerja($responses),
+            'metode_pembelajaran' => $this->metodePembelajaran($responses),
         ];
+    }
+
+    /**
+     * @param  Collection<int, TracerResponse>  $responses
+     * @param  array<int, string>  $labels
+     * @return array<string, int>
+     */
+    private function countBy(Collection $responses, string $field, array $labels, bool $sortByCount = false): array
+    {
+        $counts = [];
+        foreach ($labels as $code => $label) {
+            $counts[$label] = $responses->filter(fn (TracerResponse $r) => (int) $r->{$field} === $code && $r->{$field} !== null)->count();
+        }
+
+        if ($sortByCount) {
+            arsort($counts);
+        }
+
+        return $counts;
+    }
+
+    /**
+     * F401-F416 (minus the unused f410/f412 columns): a checkbox question,
+     * so counts don't sum to the respondent total — basis is everyone whose
+     * status makes this question applicable (bekerja/mencari kerja).
+     *
+     * @param  Collection<int, TracerResponse>  $responses
+     * @return array{basis: int, items: array<string, array{jumlah: int, persen: float}>}
+     */
+    private function caraMencariKerja(Collection $responses): array
+    {
+        $applicable = $responses->filter(fn (TracerResponse $r) => in_array((int) $r->f8, [
+            TracerResponse::STATUS_BEKERJA, TracerResponse::STATUS_MENCARI_KERJA,
+        ], true));
+        $basis = $applicable->count();
+
+        $labels = [
+            401 => 'Iklan koran/majalah/brosur', 402 => 'Melamar langsung tanpa tahu lowongan',
+            403 => 'Bursa/pameran kerja', 404 => 'Internet/medsos/job portal', 405 => 'Dihubungi perusahaan',
+            406 => 'Menghubungi Kementerian Ketenagakerjaan', 407 => 'Agen tenaga kerja swasta',
+            408 => 'Info karir dari fakultas/universitas', 409 => 'Kantor kemahasiswaan/alumni',
+            411 => 'Jejaring/relasi (dosen, orang tua, teman)', 413 => 'Penempatan kerja/magang',
+            414 => 'Bekerja di tempat sama saat kuliah', 415 => 'Lainnya',
+        ];
+
+        $items = [];
+        foreach ($labels as $code => $label) {
+            $jumlah = $applicable->filter(fn (TracerResponse $r) => (bool) $r->{"f{$code}"})->count();
+            $items[$label] = ['jumlah' => $jumlah, 'persen' => $this->percent($jumlah, $basis)];
+        }
+        uasort($items, fn ($a, $b) => $b['jumlah'] <=> $a['jumlah']);
+
+        return ['basis' => $basis, 'items' => $items];
+    }
+
+    /**
+     * F21-F37: "seberapa besar penekanan" rating, 1 (Sangat Besar) to 5
+     * (Tidak Ada) — lower is more emphasis. An item nobody has answered yet
+     * (e.g. the four competencies added in the October 2026 form rework)
+     * reports null instead of a misleading 0.
+     *
+     * @param  Collection<int, TracerResponse>  $responses
+     * @return list<array{label: string, rata_rata: ?float, n: int}>
+     */
+    private function metodePembelajaran(Collection $responses): array
+    {
+        $labels = [
+            21 => 'Perkuliahan', 22 => 'Mendemonstrasikan', 23 => 'Penelitian/partisipasi riset',
+            24 => 'Magang/praktik kerja', 25 => 'Praktikum', 26 => 'Kerja lapangan', 27 => 'Diskusi',
+            28 => 'Responsi/tutorial', 29 => 'Seminar', 30 => 'Studio', 31 => 'Perancangan',
+            32 => 'Pengembangan (produk/karya seni)', 33 => 'Tugas akhir', 34 => 'Pelatihan bela negara',
+            35 => 'Pertukaran pelajar', 36 => 'Wirausaha', 37 => 'Pengabdian kepada masyarakat',
+        ];
+
+        $items = [];
+        foreach ($labels as $code => $label) {
+            $values = $responses->pluck("f{$code}")->filter(fn ($v) => $v !== null)->map(fn ($v) => (int) $v);
+            $items[] = [
+                'label' => $label,
+                'rata_rata' => $values->isEmpty() ? null : round($values->avg(), 2),
+                'n' => $values->count(),
+            ];
+        }
+
+        return $items;
     }
 
     /**

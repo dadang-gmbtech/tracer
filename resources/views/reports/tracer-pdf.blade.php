@@ -270,6 +270,164 @@
         @else
             <p class="muted">Belum ada data lokasi tempat kerja untuk tahun lulus ini.</p>
         @endif
+
+        {{-- 7. Relevansi Bidang Studi (F14) --}}
+        <h2>7. Relevansi Bidang Studi dengan Pekerjaan</h2>
+        @php
+            $f14 = $breakdown['f14'];
+            $f14Total = array_sum($f14);
+            $f14Max = max(1, ...array_values($f14));
+        @endphp
+        @if ($f14Total > 0)
+            <div class="bar-chart">
+                @foreach ($f14 as $label => $value)
+                    <div class="bar-row">
+                        <div class="bar-label">{{ $label }} ({{ $value }})</div>
+                        <div class="bar-track"><div class="bar-fill" style="width: {{ max(2, round($value / $f14Max * 100)) }}%;"></div></div>
+                    </div>
+                @endforeach
+            </div>
+            @php $f14Top = array_search(max($f14), $f14) @endphp
+            <p class="narrative">
+                Dari {{ $f14Total }} responden yang mengisi, {{ round($f14[$f14Top] / $f14Total * 100, 1) }}% menilai
+                pekerjaannya "{{ strtolower($f14Top) }}" dengan bidang studinya.
+            </p>
+        @else
+            <p class="muted">Belum ada data relevansi bidang studi untuk tahun lulus ini.</p>
+        @endif
+
+        {{-- 8. Kesesuaian Jenjang Pendidikan (F15) --}}
+        <h2>8. Kesesuaian Jenjang Pendidikan</h2>
+        @php
+            $f15 = $breakdown['f15'];
+            $f15Total = array_sum($f15);
+            $f15Max = max(1, ...array_values($f15));
+        @endphp
+        @if ($f15Total > 0)
+            <div class="bar-chart">
+                @foreach ($f15 as $label => $value)
+                    <div class="bar-row">
+                        <div class="bar-label">{{ $label }} ({{ $value }})</div>
+                        <div class="bar-track"><div class="bar-fill" style="width: {{ max(2, round($value / $f15Max * 100)) }}%;"></div></div>
+                    </div>
+                @endforeach
+            </div>
+            @php $f15Top = array_search(max($f15), $f15) @endphp
+            <p class="narrative">
+                Dari {{ $f15Total }} responden yang mengisi, {{ round($f15[$f15Top] / $f15Total * 100, 1) }}% bekerja
+                pada "{{ strtolower($f15Top) }}" dengan jenjang pendidikannya.
+            </p>
+        @else
+            <p class="muted">Belum ada data kesesuaian jenjang pendidikan untuk tahun lulus ini.</p>
+        @endif
+
+        {{-- 9. Jenis Perusahaan/Instansi (F1101) --}}
+        <h2>9. Jenis Perusahaan/Instansi Tempat Bekerja</h2>
+        @php
+            $jenisInstansi = $breakdown['jenis_instansi'];
+            $jenisInstansiTotal = array_sum($jenisInstansi);
+            $jenisInstansiMax = max(1, ...array_values($jenisInstansi));
+        @endphp
+        @if ($jenisInstansiTotal > 0)
+            <div class="bar-chart">
+                @foreach ($jenisInstansi as $label => $value)
+                    <div class="bar-row">
+                        <div class="bar-label">{{ $label }} ({{ $value }})</div>
+                        <div class="bar-track"><div class="bar-fill" style="width: {{ max(2, round($value / $jenisInstansiMax * 100)) }}%; background: #0891b2;"></div></div>
+                    </div>
+                @endforeach
+            </div>
+            @php $jenisInstansiTop = array_key_first($jenisInstansi) @endphp
+            <p class="narrative">
+                Dari {{ $jenisInstansiTotal }} responden bekerja yang mengisi,
+                {{ round($jenisInstansi[$jenisInstansiTop] / $jenisInstansiTotal * 100, 1) }}% bekerja di
+                {{ strtolower($jenisInstansiTop) }}.
+            </p>
+        @else
+            <p class="muted">Belum ada data jenis perusahaan/instansi untuk tahun lulus ini.</p>
+        @endif
+
+        {{-- 10. Ruang Lingkup Tempat Bekerja (F5D) --}}
+        <h2>10. Ruang Lingkup Tempat Bekerja</h2>
+        @php
+            $ruangLingkup = $breakdown['ruang_lingkup'];
+            $ruangLingkupTotal = array_sum($ruangLingkup);
+            $ruangLingkupMax = max(1, ...array_values($ruangLingkup));
+        @endphp
+        @if ($ruangLingkupTotal > 0)
+            <div class="bar-chart">
+                @foreach ($ruangLingkup as $label => $value)
+                    <div class="bar-row">
+                        <div class="bar-label">{{ $label }} ({{ $value }})</div>
+                        <div class="bar-track"><div class="bar-fill" style="width: {{ max(2, round($value / $ruangLingkupMax * 100)) }}%; background: #0891b2;"></div></div>
+                    </div>
+                @endforeach
+            </div>
+            @php $ruangLingkupTop = array_search(max($ruangLingkup), $ruangLingkup) @endphp
+            <p class="narrative">
+                Dari {{ $ruangLingkupTotal }} responden yang mengisi,
+                {{ round($ruangLingkup[$ruangLingkupTop] / $ruangLingkupTotal * 100, 1) }}% bekerja di lingkup
+                {{ strtolower($ruangLingkupTop) }}.
+            </p>
+        @else
+            <p class="muted">Belum ada data ruang lingkup tempat bekerja untuk tahun lulus ini.</p>
+        @endif
+
+        {{-- 11. Bagaimana Mencari Pekerjaan (F401-F416) --}}
+        <h2>11. Bagaimana Mencari Pekerjaan</h2>
+        @php
+            $caraMencariKerja = $breakdown['cara_mencari_kerja'];
+        @endphp
+        @if ($caraMencariKerja['basis'] > 0)
+            <div class="bar-chart">
+                @foreach ($caraMencariKerja['items'] as $label => $item)
+                    <div class="bar-row">
+                        <div class="bar-label">{{ $label }} ({{ $item['jumlah'] }})</div>
+                        <div class="bar-track"><div class="bar-fill" style="width: {{ max(2, round($item['persen'])) }}%; background: #be185d;"></div></div>
+                    </div>
+                @endforeach
+            </div>
+            @php $caraTop = array_key_first($caraMencariKerja['items']) @endphp
+            <p class="narrative">
+                Basis: {{ $caraMencariKerja['basis'] }} responden berstatus bekerja/mencari kerja (boleh memilih lebih
+                dari satu cara). "{{ $caraTop }}" jadi cara paling umum, dipilih oleh
+                {{ $caraMencariKerja['items'][$caraTop]['persen'] }}% responden.
+            </p>
+        @else
+            <p class="muted">Belum ada data cara mencari pekerjaan untuk tahun lulus ini.</p>
+        @endif
+
+        {{-- 12. Penekanan Metode Pembelajaran (F21-F37) --}}
+        <h2>12. Penekanan Metode/Bentuk Pembelajaran di Program Studi</h2>
+        <p class="muted" style="margin: 0 0 4px;">Skala 1 (Sangat Besar) &ndash; 5 (Tidak Ada); angka lebih kecil berarti penekanan lebih besar.</p>
+        @php
+            $metode = $breakdown['metode_pembelajaran'];
+            $metodeWithData = collect($metode)->filter(fn ($m) => $m['rata_rata'] !== null);
+        @endphp
+        @if ($metodeWithData->isNotEmpty())
+            <div class="bar-chart">
+                @foreach ($metode as $m)
+                    <div class="bar-row">
+                        @if ($m['rata_rata'] === null)
+                            <div class="bar-label muted">{{ $m['label'] }} &mdash; belum ada data</div>
+                        @else
+                            <div class="bar-label">{{ $m['label'] }} ({{ number_format($m['rata_rata'], 2) }})</div>
+                            <div class="bar-track"><div class="bar-fill" style="width: {{ max(2, round((5 - $m['rata_rata']) / 4 * 100)) }}%; background: #ca8a04;"></div></div>
+                        @endif
+                    </div>
+                @endforeach
+            </div>
+            @php $metodeTop = $metodeWithData->sortBy('rata_rata')->first() @endphp
+            <p class="narrative">
+                "{{ $metodeTop['label'] }}" dinilai paling ditekankan (rata-rata {{ number_format($metodeTop['rata_rata'], 2) }}
+                dari skala 1&ndash;5), dari {{ $metodeTop['n'] }} responden yang mengisi.
+                @if ($metodeWithData->count() < count($metode))
+                    {{ count($metode) - $metodeWithData->count() }} metode lainnya belum punya data.
+                @endif
+            </p>
+        @else
+            <p class="muted">Belum ada data metode pembelajaran untuk tahun lulus ini.</p>
+        @endif
     @endif
 
     <h2>Tren Beberapa Tahun Terakhir</h2>
@@ -286,7 +444,7 @@
         </thead>
         <tbody>
             @foreach ($trendYears as $y)
-                @php($row = $summary['data'][$y])
+                @php $row = $summary['data'][$y] @endphp
                 <tr>
                     <td>{{ $y }}</td>
                     <td>{{ $row['jumlah_alumni'] }}</td>
