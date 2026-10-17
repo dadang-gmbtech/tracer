@@ -287,4 +287,33 @@ class DashboardTest extends TestCase
         $response->assertSee('D.K.I. Jakarta');
         $response->assertSee('Luar Negeri');
     }
+
+    public function test_report_breakdown_ignores_zero_placeholders_left_by_imported_rows(): void
+    {
+        // Imported rows store 0 (not null) for unanswered ratings, salary and
+        // masa tunggu, regardless of the respondent's status.
+        $bekerja = Alumni::factory()->create(['graduation_year' => 2025]);
+        TracerResponse::factory()->create([
+            'alumni_id' => $bekerja->id, 'f8' => 1, 'f502' => 3, 'f505' => 6_000_000, 'f21' => 2, 'f28' => 0,
+        ]);
+        $studiLanjut = Alumni::factory()->create(['graduation_year' => 2025]);
+        TracerResponse::factory()->create([
+            'alumni_id' => $studiLanjut->id, 'f8' => 4, 'f502' => 0, 'f505' => 0, 'f21' => 0, 'f28' => 0,
+        ]);
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+
+        $breakdown = app(DashboardService::class)->reportBreakdown($admin, 2025);
+
+        $this->assertSame(1, array_sum($breakdown['masa_tunggu']));
+        $this->assertSame(1, array_sum($breakdown['pendapatan']));
+        $this->assertSame(0, $breakdown['pendapatan']['<3 juta']);
+        $this->assertEquals(6_000_000, $breakdown['rata_rata_pendapatan']);
+
+        $metode = collect($breakdown['metode_pembelajaran'])->keyBy('label');
+        $this->assertEquals(2.0, $metode['Perkuliahan']['rata_rata']);
+        $this->assertSame(1, $metode['Perkuliahan']['n']);
+        $this->assertFalse($metode->has('Responsi/tutorial'));
+    }
 }

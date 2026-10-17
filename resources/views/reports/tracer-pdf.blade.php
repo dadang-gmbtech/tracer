@@ -43,10 +43,11 @@
         @php
             $tidakMengisi = max(0, $current['jumlah_alumni'] - $current['responden']);
             $responPercent = $current['persentase_responden'];
+            $section = 0;
         @endphp
 
-        {{-- 1. Responden Tracer Study --}}
-        <h2>1. Responden Tracer Study</h2>
+        {{-- Responden Tracer Study --}}
+        <h2>{{ ++$section }}. Responden Tracer Study</h2>
         <table class="chart-row">
             <tr>
                 <td width="55%">
@@ -89,48 +90,8 @@
             ({{ round(100 - $responPercent, 1) }}%) belum mengisi.
         </p>
 
-        {{-- 2. Sebaran Responden per Fakultas --}}
-        @if ($facultyRecap['rows']->count() > 1)
-            @php
-                $facultySorted = $facultyRecap['rows']->sortByDesc('persentase_responden')->values();
-                $topFaculty = $facultySorted->first();
-                $bottomFaculty = $facultySorted->last();
-            @endphp
-            <h2>2. Sebaran Responden Tracer Study per Fakultas</h2>
-            <table>
-                <thead>
-                    <tr><th>No</th><th>Fakultas</th><th>Lulusan</th><th>Responden</th><th>% Partisipasi</th></tr>
-                </thead>
-                <tbody>
-                    @foreach ($facultySorted as $i => $row)
-                        <tr>
-                            <td>{{ $i + 1 }}</td>
-                            <td>{{ $row['faculty'] }}</td>
-                            <td>{{ $row['jumlah_alumni'] }}</td>
-                            <td>{{ $row['responden'] }}</td>
-                            <td>{{ $row['persentase_responden'] }}%</td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-            <div class="bar-chart" style="margin-top: 8px;">
-                @foreach ($facultySorted as $row)
-                    <div class="bar-row">
-                        <div class="bar-label">{{ $row['faculty'] }} ({{ $row['persentase_responden'] }}%)</div>
-                        <div class="bar-track"><div class="bar-fill" style="width: {{ max(2, round($row['persentase_responden'])) }}%;"></div></div>
-                    </div>
-                @endforeach
-            </div>
-            <p class="narrative">
-                Tingkat partisipasi tertinggi dicapai oleh {{ $topFaculty['faculty'] }} dengan
-                {{ $topFaculty['persentase_responden'] }}% ({{ $topFaculty['responden'] }} dari
-                {{ $topFaculty['jumlah_alumni'] }} lulusan), sedangkan tingkat partisipasi terendah ada pada
-                {{ $bottomFaculty['faculty'] }} dengan {{ $bottomFaculty['persentase_responden'] }}%.
-            </p>
-        @endif
-
-        {{-- 3. Status Lulusan --}}
-        <h2>3. Status Lulusan Tahun {{ $year }}</h2>
+        {{-- Status Lulusan --}}
+        <h2>{{ ++$section }}. Status Lulusan Tahun {{ $year }}</h2>
         @php
             $status = $breakdown['status_lulusan'];
             $statusTotal = array_sum($status);
@@ -181,8 +142,48 @@
             <p class="muted">Belum ada responden dengan status terisi untuk tahun lulus ini.</p>
         @endif
 
-        {{-- 4. Masa Tunggu --}}
-        <h2>4. Masa Tunggu Mendapatkan Pekerjaan/Usaha Pertama</h2>
+        {{-- Sebaran Responden per Fakultas --}}
+        @if ($facultyRecap['rows']->count() > 1)
+            @php
+                $facultySorted = $facultyRecap['rows']->sortByDesc('persentase_responden')->values();
+                $topFaculty = $facultySorted->first();
+                $bottomFaculty = $facultySorted->last();
+            @endphp
+            <h2>{{ ++$section }}. Sebaran Responden Tracer Study per Fakultas</h2>
+            <table>
+                <thead>
+                    <tr><th>No</th><th>Fakultas</th><th>Lulusan</th><th>Responden</th><th>% Partisipasi</th></tr>
+                </thead>
+                <tbody>
+                    @foreach ($facultySorted as $i => $row)
+                        <tr>
+                            <td>{{ $i + 1 }}</td>
+                            <td>{{ $row['faculty'] }}</td>
+                            <td>{{ $row['jumlah_alumni'] }}</td>
+                            <td>{{ $row['responden'] }}</td>
+                            <td>{{ $row['persentase_responden'] }}%</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+            <div class="bar-chart" style="margin-top: 8px;">
+                @foreach ($facultySorted as $row)
+                    <div class="bar-row">
+                        <div class="bar-label">{{ $row['faculty'] }} ({{ $row['persentase_responden'] }}%)</div>
+                        <div class="bar-track"><div class="bar-fill" style="width: {{ max(2, round($row['persentase_responden'])) }}%;"></div></div>
+                    </div>
+                @endforeach
+            </div>
+            <p class="narrative">
+                Tingkat partisipasi tertinggi dicapai oleh {{ $topFaculty['faculty'] }} dengan
+                {{ $topFaculty['persentase_responden'] }}% ({{ $topFaculty['responden'] }} dari
+                {{ $topFaculty['jumlah_alumni'] }} lulusan), sedangkan tingkat partisipasi terendah ada pada
+                {{ $bottomFaculty['faculty'] }} dengan {{ $bottomFaculty['persentase_responden'] }}%.
+            </p>
+        @endif
+
+        {{-- Masa Tunggu --}}
+        <h2>{{ ++$section }}. Masa Tunggu Mendapatkan Pekerjaan/Usaha Pertama</h2>
         @php
             $masaTunggu = $breakdown['masa_tunggu'];
             $masaTungguTotal = array_sum($masaTunggu);
@@ -207,8 +208,8 @@
             <p class="muted">Belum ada data masa tunggu untuk tahun lulus ini.</p>
         @endif
 
-        {{-- 5. Besaran Pendapatan --}}
-        <h2>5. Besaran Pendapatan per Bulan</h2>
+        {{-- Besaran Pendapatan --}}
+        <h2>{{ ++$section }}. Besaran Pendapatan per Bulan</h2>
         @php
             $pendapatan = $breakdown['pendapatan'];
             $pendapatanTotal = array_sum($pendapatan);
@@ -225,15 +226,15 @@
             </div>
             <p class="narrative">
                 Rata-rata pendapatan responden yang bekerja/berwirausaha adalah
-                Rp {{ number_format($current['rata_rata_penghasilan'], 0, ',', '.') }} per bulan, dari
+                Rp {{ number_format($breakdown['rata_rata_pendapatan'], 0, ',', '.') }} per bulan, dari
                 {{ $pendapatanTotal }} responden yang mengisi besaran pendapatannya.
             </p>
         @else
             <p class="muted">Belum ada data pendapatan untuk tahun lulus ini.</p>
         @endif
 
-        {{-- 6. Sebaran Tempat Kerja --}}
-        <h2>6. Sebaran Tempat Kerja</h2>
+        {{-- Sebaran Tempat Kerja --}}
+        <h2>{{ ++$section }}. Sebaran Tempat Kerja</h2>
         @php
             $tempatKerja = collect($breakdown['tempat_kerja']);
             $tempatKerjaTop = $tempatKerja->take(10);
@@ -271,8 +272,8 @@
             <p class="muted">Belum ada data lokasi tempat kerja untuk tahun lulus ini.</p>
         @endif
 
-        {{-- 7. Relevansi Bidang Studi (F14) --}}
-        <h2>7. Relevansi Bidang Studi dengan Pekerjaan</h2>
+        {{-- Relevansi Bidang Studi (F14) --}}
+        <h2>{{ ++$section }}. Relevansi Bidang Studi dengan Pekerjaan</h2>
         @php
             $f14 = $breakdown['f14'];
             $f14Total = array_sum($f14);
@@ -296,8 +297,8 @@
             <p class="muted">Belum ada data relevansi bidang studi untuk tahun lulus ini.</p>
         @endif
 
-        {{-- 8. Kesesuaian Jenjang Pendidikan (F15) --}}
-        <h2>8. Kesesuaian Jenjang Pendidikan</h2>
+        {{-- Kesesuaian Jenjang Pendidikan (F15) --}}
+        <h2>{{ ++$section }}. Kesesuaian Jenjang Pendidikan</h2>
         @php
             $f15 = $breakdown['f15'];
             $f15Total = array_sum($f15);
@@ -321,8 +322,8 @@
             <p class="muted">Belum ada data kesesuaian jenjang pendidikan untuk tahun lulus ini.</p>
         @endif
 
-        {{-- 9. Jenis Perusahaan/Instansi (F1101) --}}
-        <h2>9. Jenis Perusahaan/Instansi Tempat Bekerja</h2>
+        {{-- Jenis Perusahaan/Instansi (F1101) --}}
+        <h2>{{ ++$section }}. Jenis Perusahaan/Instansi Tempat Bekerja</h2>
         @php
             $jenisInstansi = $breakdown['jenis_instansi'];
             $jenisInstansiTotal = array_sum($jenisInstansi);
@@ -347,8 +348,8 @@
             <p class="muted">Belum ada data jenis perusahaan/instansi untuk tahun lulus ini.</p>
         @endif
 
-        {{-- 10. Ruang Lingkup Tempat Bekerja (F5D) --}}
-        <h2>10. Ruang Lingkup Tempat Bekerja</h2>
+        {{-- Ruang Lingkup Tempat Bekerja (F5D) --}}
+        <h2>{{ ++$section }}. Ruang Lingkup Tempat Bekerja</h2>
         @php
             $ruangLingkup = $breakdown['ruang_lingkup'];
             $ruangLingkupTotal = array_sum($ruangLingkup);
@@ -373,8 +374,8 @@
             <p class="muted">Belum ada data ruang lingkup tempat bekerja untuk tahun lulus ini.</p>
         @endif
 
-        {{-- 11. Bagaimana Mencari Pekerjaan (F401-F416) --}}
-        <h2>11. Bagaimana Mencari Pekerjaan</h2>
+        {{-- Bagaimana Mencari Pekerjaan (F401-F416) --}}
+        <h2>{{ ++$section }}. Bagaimana Mencari Pekerjaan</h2>
         @php
             $caraMencariKerja = $breakdown['cara_mencari_kerja'];
         @endphp
@@ -397,36 +398,26 @@
             <p class="muted">Belum ada data cara mencari pekerjaan untuk tahun lulus ini.</p>
         @endif
 
-        {{-- 12. Penekanan Metode Pembelajaran (F21-F37) --}}
-        <h2>12. Penekanan Metode/Bentuk Pembelajaran di Program Studi</h2>
-        <p class="muted" style="margin: 0 0 4px;">Skala 1 (Sangat Besar) &ndash; 5 (Tidak Ada); angka lebih kecil berarti penekanan lebih besar.</p>
+        {{-- Penekanan Metode Pembelajaran (F21-F37) --}}
         @php
-            $metode = $breakdown['metode_pembelajaran'];
-            $metodeWithData = collect($metode)->filter(fn ($m) => $m['rata_rata'] !== null);
+            $metode = collect($breakdown['metode_pembelajaran'])->sortBy('rata_rata')->values();
         @endphp
-        @if ($metodeWithData->isNotEmpty())
+        @if ($metode->isNotEmpty())
+            <h2>{{ ++$section }}. Penekanan Metode/Bentuk Pembelajaran di Program Studi</h2>
+            <p class="muted" style="margin: 0 0 4px;">Skala 1 (Sangat Besar) &ndash; 5 (Tidak Ada); angka lebih kecil berarti penekanan lebih besar, ditunjukkan dengan batang yang lebih panjang.</p>
             <div class="bar-chart">
                 @foreach ($metode as $m)
                     <div class="bar-row">
-                        @if ($m['rata_rata'] === null)
-                            <div class="bar-label muted">{{ $m['label'] }} &mdash; belum ada data</div>
-                        @else
-                            <div class="bar-label">{{ $m['label'] }} ({{ number_format($m['rata_rata'], 2) }})</div>
-                            <div class="bar-track"><div class="bar-fill" style="width: {{ max(2, round((5 - $m['rata_rata']) / 4 * 100)) }}%; background: #ca8a04;"></div></div>
-                        @endif
+                        <div class="bar-label">{{ $m['label'] }} ({{ number_format($m['rata_rata'], 2, ',', '.') }})</div>
+                        <div class="bar-track"><div class="bar-fill" style="width: {{ max(2, round((5 - $m['rata_rata']) / 4 * 100)) }}%; background: #ca8a04;"></div></div>
                     </div>
                 @endforeach
             </div>
-            @php $metodeTop = $metodeWithData->sortBy('rata_rata')->first() @endphp
+            @php $metodeTop = $metode->first() @endphp
             <p class="narrative">
-                "{{ $metodeTop['label'] }}" dinilai paling ditekankan (rata-rata {{ number_format($metodeTop['rata_rata'], 2) }}
-                dari skala 1&ndash;5), dari {{ $metodeTop['n'] }} responden yang mengisi.
-                @if ($metodeWithData->count() < count($metode))
-                    {{ count($metode) - $metodeWithData->count() }} metode lainnya belum punya data.
-                @endif
+                "{{ $metodeTop['label'] }}" dinilai paling ditekankan di program studi (rata-rata
+                {{ number_format($metodeTop['rata_rata'], 2, ',', '.') }} dari skala 1&ndash;5, {{ $metodeTop['n'] }} responden).
             </p>
-        @else
-            <p class="muted">Belum ada data metode pembelajaran untuk tahun lulus ini.</p>
         @endif
     @endif
 

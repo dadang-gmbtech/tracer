@@ -226,8 +226,14 @@ class DashboardService
         $wiraswasta = $responses->filter(fn (TracerResponse $r) => (int) $r->f8 === TracerResponse::STATUS_WIRASWASTA)->count();
         $studiLanjut = $responses->filter(fn (TracerResponse $r) => (int) $r->f8 === TracerResponse::STATUS_MELANJUTKAN_STUDI)->count();
 
-        $waktuTunggu = $responses->pluck('f502')->filter(fn ($v) => $v !== null)->map(fn ($v) => (int) $v);
-        $gaji = $responses->pluck('f505')->filter(fn ($v) => $v !== null)->map(fn ($v) => (float) $v);
+        // Imported rows store 0 instead of null in f502/f505 for every status,
+        // so scope both to bekerja/wiraswasta explicitly, and treat a 0 salary
+        // as unanswered.
+        $working = $responses->filter(fn (TracerResponse $r) => in_array((int) $r->f8, [
+            TracerResponse::STATUS_BEKERJA, TracerResponse::STATUS_WIRASWASTA,
+        ], true));
+        $waktuTunggu = $working->pluck('f502')->filter(fn ($v) => $v !== null)->map(fn ($v) => (int) $v);
+        $gaji = $working->pluck('f505')->filter(fn ($v) => $v !== null && (float) $v > 0)->map(fn ($v) => (float) $v);
 
         return [
             'status_lulusan' => [
@@ -247,6 +253,7 @@ class DashboardService
                 '5-10 juta' => $gaji->filter(fn ($v) => $v >= 5_000_000 && $v < 10_000_000)->count(),
                 '>10 juta' => $gaji->filter(fn ($v) => $v >= 10_000_000)->count(),
             ],
+            'rata_rata_pendapatan' => $gaji->isEmpty() ? 0 : round($gaji->avg(), 2),
             'tempat_kerja' => $this->groupByProvince($alumni),
             'f14' => $this->countBy($responses, 'f14', [
                 1 => 'Sangat relevan', 2 => 'Relevan', 3 => 'Cukup relevan', 4 => 'Kurang relevan', 5 => 'Tidak relevan',
@@ -321,12 +328,13 @@ class DashboardService
 
     /**
      * F21-F37: "seberapa besar penekanan" rating, 1 (Sangat Besar) to 5
-     * (Tidak Ada) — lower is more emphasis. An item nobody has answered yet
-     * (e.g. the four competencies added in the October 2026 form rework)
-     * reports null instead of a misleading 0.
+     * (Tidak Ada) — lower is more emphasis. Imported rows store 0 for an
+     * unanswered item, so only 1-5 counts as an answer; an item nobody has
+     * answered yet (e.g. those added in the October 2026 form rework) is
+     * left out entirely rather than shown with a meaningless average.
      *
      * @param  Collection<int, TracerResponse>  $responses
-     * @return list<array{label: string, rata_rata: ?float, n: int}>
+     * @return list<array{label: string, rata_rata: float, n: int}>
      */
     private function metodePembelajaran(Collection $responses): array
     {
@@ -340,10 +348,17 @@ class DashboardService
 
         $items = [];
         foreach ($labels as $code => $label) {
-            $values = $responses->pluck("f{$code}")->filter(fn ($v) => $v !== null)->map(fn ($v) => (int) $v);
+            $values = $responses->pluck("f{$code}")
+                ->filter(fn ($v) => $v !== null && (int) $v >= 1 && (int) $v <= 5)
+                ->map(fn ($v) => (int) $v);
+
+            if ($values->isEmpty()) {
+                continue;
+            }
+
             $items[] = [
                 'label' => $label,
-                'rata_rata' => $values->isEmpty() ? null : round($values->avg(), 2),
+                'rata_rata' => round($values->avg(), 2),
                 'n' => $values->count(),
             ];
         }
