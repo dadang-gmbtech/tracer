@@ -152,19 +152,34 @@ class DashboardService
 
     /**
      * Alumni counted by the province they work in (f5a1/work_province_id on
-     * their tracer response), across all graduation years in scope — a
-     * cohort-year slice isn't useful for a distribution map, unlike the
-     * dashboard's other per-year breakdowns. Alumni who haven't answered the
-     * tracer form, or left the work-location question blank, aren't counted
-     * anywhere here (there's no province to plot them at).
+     * their tracer response). Across all graduation years in scope by
+     * default (a cohort-year slice isn't useful for the dashboard's
+     * distribution map, unlike its other per-year breakdowns) — pass $year
+     * to scope it to a single cohort instead (used by the "Laporan Tracer
+     * Study" PDF's "Sebaran Tempat Kerja" section). Alumni who haven't
+     * answered the tracer form, or left the work-location question blank,
+     * aren't counted anywhere here (there's no province to plot them at).
      *
      * @param  array{faculty_id?: int, program_study_id?: int, jenjang?: list<string>}  $filters
      * @return list<array{code: string, name: string, jumlah: int, lat: ?float, lng: ?float, is_luar_negeri: bool}>
      */
-    public function alumniByProvince(User $user, array $filters = []): array
+    public function alumniByProvince(User $user, array $filters = [], ?int $year = null): array
     {
         $alumni = $this->loadAlumni($user, $filters);
 
+        if ($year !== null) {
+            $alumni = $alumni->where('graduation_year', $year);
+        }
+
+        return $this->groupByProvince($alumni);
+    }
+
+    /**
+     * @param  Collection<int, Alumni>  $alumni
+     * @return list<array{code: string, name: string, jumlah: int, lat: ?float, lng: ?float, is_luar_negeri: bool}>
+     */
+    private function groupByProvince(Collection $alumni): array
+    {
         return $alumni
             ->map(fn (Alumni $a) => $a->tracerResponse?->workProvince)
             ->filter()
@@ -186,6 +201,54 @@ class DashboardService
             ->sortByDesc('jumlah')
             ->values()
             ->all();
+    }
+
+    /**
+     * Bucketed breakdowns for the "Laporan Tracer Study" PDF
+     * (AutoReportController) that summary()/facultyRecap() don't already
+     * provide: status lulusan, masa tunggu buckets, pendapatan buckets, and
+     * province-of-work ranking — all scoped to a single graduation year.
+     *
+     * Masa tunggu (f502) and pendapatan (f505) are only ever collected for
+     * F8=bekerja/wiraswasta (see TracerFormRequest) — f502/f505 are null for
+     * every other status, so no extra f8 filtering is needed before
+     * bucketing them.
+     *
+     * @param  array{faculty_id?: int, program_study_id?: int, jenjang?: list<string>}  $filters
+     */
+    public function reportBreakdown(User $user, int $year, array $filters = []): array
+    {
+        $alumni = $this->loadAlumni($user, $filters)->where('graduation_year', $year);
+        $responded = $alumni->filter(fn (Alumni $a) => $a->tracerResponse !== null);
+        $responses = $responded->map(fn (Alumni $a) => $a->tracerResponse);
+
+        $bekerja = $responses->filter(fn (TracerResponse $r) => (int) $r->f8 === TracerResponse::STATUS_BEKERJA)->count();
+        $wiraswasta = $responses->filter(fn (TracerResponse $r) => (int) $r->f8 === TracerResponse::STATUS_WIRASWASTA)->count();
+        $studiLanjut = $responses->filter(fn (TracerResponse $r) => (int) $r->f8 === TracerResponse::STATUS_MELANJUTKAN_STUDI)->count();
+
+        $waktuTunggu = $responses->pluck('f502')->filter(fn ($v) => $v !== null)->map(fn ($v) => (int) $v);
+        $gaji = $responses->pluck('f505')->filter(fn ($v) => $v !== null)->map(fn ($v) => (float) $v);
+
+        return [
+            'status_lulusan' => [
+                'bekerja' => $bekerja,
+                'wiraswasta' => $wiraswasta,
+                'studi_lanjut' => $studiLanjut,
+                'belum_bekerja' => max(0, $responded->count() - $bekerja - $wiraswasta - $studiLanjut),
+            ],
+            'masa_tunggu' => [
+                '<=6 bulan' => $waktuTunggu->filter(fn ($v) => $v <= 6)->count(),
+                '7-12 bulan' => $waktuTunggu->filter(fn ($v) => $v > 6 && $v <= 12)->count(),
+                '>12 bulan' => $waktuTunggu->filter(fn ($v) => $v > 12)->count(),
+            ],
+            'pendapatan' => [
+                '<3 juta' => $gaji->filter(fn ($v) => $v < 3_000_000)->count(),
+                '3-5 juta' => $gaji->filter(fn ($v) => $v >= 3_000_000 && $v < 5_000_000)->count(),
+                '5-10 juta' => $gaji->filter(fn ($v) => $v >= 5_000_000 && $v < 10_000_000)->count(),
+                '>10 juta' => $gaji->filter(fn ($v) => $v >= 10_000_000)->count(),
+            ],
+            'tempat_kerja' => $this->groupByProvince($alumni),
+        ];
     }
 
     /**

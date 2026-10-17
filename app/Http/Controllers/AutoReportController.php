@@ -57,6 +57,7 @@ class AutoReportController extends Controller
             'summary' => $summary,
             'trendYears' => $trendYears,
             'facultyRecap' => $dashboard->facultyRecap($user, $year, $filters),
+            'breakdown' => $dashboard->reportBreakdown($user, $year, $filters),
             'employerSummary' => $employerDashboard->summary($user, $filters),
             'generatedBy' => $user->name,
             'generatedAt' => now(),
