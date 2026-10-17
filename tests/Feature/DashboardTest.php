@@ -311,6 +311,10 @@ class DashboardTest extends TestCase
         $this->assertSame(0, $breakdown['pendapatan']['<3 juta']);
         $this->assertEquals(6_000_000, $breakdown['rata_rata_pendapatan']);
 
+        // The dashboard's average uses the same rule, so both always agree.
+        $summary = app(DashboardService::class)->summary($admin);
+        $this->assertEquals(6_000_000, $summary['data'][2025]['rata_rata_penghasilan']);
+
         $metode = collect($breakdown['metode_pembelajaran'])->keyBy('label');
         $this->assertEquals(2.0, $metode['Perkuliahan']['rata_rata']);
         $this->assertSame(1, $metode['Perkuliahan']['n']);

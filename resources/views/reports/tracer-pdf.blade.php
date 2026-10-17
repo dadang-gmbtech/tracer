@@ -225,9 +225,9 @@
                 @endforeach
             </div>
             <p class="narrative">
-                Rata-rata pendapatan responden yang bekerja/berwirausaha adalah
-                Rp {{ number_format($breakdown['rata_rata_pendapatan'], 0, ',', '.') }} per bulan, dari
-                {{ $pendapatanTotal }} responden yang mengisi besaran pendapatannya.
+                Rata-rata pendapatan adalah Rp {{ number_format($breakdown['rata_rata_pendapatan'], 0, ',', '.') }}
+                per bulan, dihitung dari {{ $pendapatanTotal }} responden yang mengisi besaran pendapatannya
+                (isian kosong tidak ikut dihitung).
             </p>
         @else
             <p class="muted">Belum ada data pendapatan untuk tahun lulus ini.</p>

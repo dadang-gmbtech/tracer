@@ -117,7 +117,7 @@ class DashboardService
             return $this->iku->bobot($r, $ump);
         });
 
-        $gajiTerisi = $responses->pluck('f505')->filter(fn ($v) => $v !== null)->map(fn ($v) => (float) $v);
+        $gajiTerisi = $this->filledSalaries($responses);
         $waktuTungguTerisi = $bekerja->pluck('f502')->filter(fn ($v) => $v !== null);
 
         return [
@@ -209,11 +209,6 @@ class DashboardService
      * provide: status lulusan, masa tunggu buckets, pendapatan buckets, and
      * province-of-work ranking — all scoped to a single graduation year.
      *
-     * Masa tunggu (f502) and pendapatan (f505) are only ever collected for
-     * F8=bekerja/wiraswasta (see TracerFormRequest) — f502/f505 are null for
-     * every other status, so no extra f8 filtering is needed before
-     * bucketing them.
-     *
      * @param  array{faculty_id?: int, program_study_id?: int, jenjang?: list<string>}  $filters
      */
     public function reportBreakdown(User $user, int $year, array $filters = []): array
@@ -226,14 +221,13 @@ class DashboardService
         $wiraswasta = $responses->filter(fn (TracerResponse $r) => (int) $r->f8 === TracerResponse::STATUS_WIRASWASTA)->count();
         $studiLanjut = $responses->filter(fn (TracerResponse $r) => (int) $r->f8 === TracerResponse::STATUS_MELANJUTKAN_STUDI)->count();
 
-        // Imported rows store 0 instead of null in f502/f505 for every status,
-        // so scope both to bekerja/wiraswasta explicitly, and treat a 0 salary
-        // as unanswered.
+        // Imported rows store 0 instead of null in f502 for every status; 0
+        // months is also a real answer, so scope to bekerja/wiraswasta.
         $working = $responses->filter(fn (TracerResponse $r) => in_array((int) $r->f8, [
             TracerResponse::STATUS_BEKERJA, TracerResponse::STATUS_WIRASWASTA,
         ], true));
         $waktuTunggu = $working->pluck('f502')->filter(fn ($v) => $v !== null)->map(fn ($v) => (int) $v);
-        $gaji = $working->pluck('f505')->filter(fn ($v) => $v !== null && (float) $v > 0)->map(fn ($v) => (float) $v);
+        $gaji = $this->filledSalaries($responses);
 
         return [
             'status_lulusan' => [
@@ -271,6 +265,22 @@ class DashboardService
             'cara_mencari_kerja' => $this->caraMencariKerja($responses),
             'metode_pembelajaran' => $this->metodePembelajaran($responses),
         ];
+    }
+
+    /**
+     * Salaries (f505) respondents actually entered. Imported rows store 0 for
+     * an unanswered salary, so 0 counts as empty rather than as a real income
+     * — otherwise it drags every average down.
+     *
+     * @param  Collection<int, TracerResponse>  $responses
+     * @return Collection<int, float>
+     */
+    private function filledSalaries(Collection $responses): Collection
+    {
+        return $responses->pluck('f505')
+            ->filter(fn ($v) => $v !== null && (float) $v > 0)
+            ->map(fn ($v) => (float) $v)
+            ->values();
     }
 
     /**
