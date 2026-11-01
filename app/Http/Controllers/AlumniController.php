@@ -66,7 +66,7 @@ class AlumniController extends Controller
     {
         $this->authorize('view', $alumni);
 
-        $alumni->load(['faculty', 'studyProgram', 'tracerResponse', 'employerResponses']);
+        $alumni->load(['faculty', 'studyProgram', 'tracerResponse', 'employerResponses', 'user.roles']);
 
         return view('alumni.show', ['alumni' => $alumni]);
     }

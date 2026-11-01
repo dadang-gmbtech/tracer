@@ -16,6 +16,22 @@
     </head>
     <body class="font-sans antialiased">
         <div class="min-h-screen bg-gray-100">
+            @if (session()->has(\App\Http\Controllers\Admin\ImpersonationController::SESSION_KEY))
+                <div style="background: #fef3c7; border-bottom: 1px solid #f59e0b; color: #78350f; padding: 0.6rem 1rem;">
+                    <div style="max-width: 80rem; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 1rem; font-size: 0.875rem;">
+                        <span>
+                            Anda sedang login sebagai <strong>{{ auth()->user()->name }}</strong>
+                            ({{ auth()->user()->getRoleNames()->join(', ') ?: 'tanpa role' }}).
+                        </span>
+                        <form method="POST" action="{{ route('impersonate.stop') }}" style="margin: 0;">
+                            @csrf
+                            <button type="submit" style="background: #78350f; color: #fff; border: 0; border-radius: 0.375rem; padding: 0.35rem 0.85rem; font-size: 0.8125rem; font-weight: 600; cursor: pointer;">
+                                Kembali ke akun Super Admin
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            @endif
             @include('layouts.navigation')
 
             <!-- Page Heading -->

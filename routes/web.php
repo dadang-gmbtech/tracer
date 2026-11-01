@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\CityController;
 use App\Http\Controllers\Admin\CountryController;
 use App\Http\Controllers\Admin\FacultyController;
 use App\Http\Controllers\Admin\HomeContentController;
+use App\Http\Controllers\Admin\ImpersonationController;
 use App\Http\Controllers\Admin\ProgramStudyController;
 use App\Http\Controllers\Admin\ProvinceController;
 use App\Http\Controllers\Admin\QuestionController;
@@ -51,6 +52,8 @@ Route::middleware('signed')->group(function () {
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    Route::post('/impersonate/stop', [ImpersonationController::class, 'stop'])->name('impersonate.stop');
+
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
@@ -96,6 +99,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('users/template', [UserController::class, 'template'])->name('users.template');
         Route::post('users/import', [UserController::class, 'import'])->name('users.import');
         Route::post('users/bulk-destroy', [UserController::class, 'bulkDestroy'])->name('users.bulk-destroy');
+        Route::post('users/{user}/impersonate', [ImpersonationController::class, 'start'])->name('users.impersonate');
         Route::resource('users', UserController::class)->except(['show']);
 
         Route::resource('faculties', FacultyController::class)->except(['show']);

@@ -65,8 +65,14 @@
                                             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">Tidak Aktif</span>
                                         @endif
                                     </td>
-                                    <td class="px-4 py-3 space-x-3">
+                                    <td class="px-4 py-3 space-x-3" style="white-space: nowrap;">
                                         <a href="{{ route('admin.users.edit', $u) }}" class="text-blue-600 hover:underline">Edit</a>
+                                        @if (\App\Http\Controllers\Admin\ImpersonationController::canImpersonate(auth()->user(), $u))
+                                            <button type="submit" form="impersonate-{{ $u->id }}" class="text-amber-700 hover:underline"
+                                                    style="background: none; border: 0; padding: 0; cursor: pointer;">
+                                                Login sebagai
+                                            </button>
+                                        @endif
                                     </td>
                                 </tr>
                             @empty
@@ -79,6 +85,14 @@
                     <button type="submit" class="text-sm text-red-600 hover:underline">Hapus User Terpilih</button>
                 </div>
             </form>
+            @foreach ($users as $u)
+                @if (\App\Http\Controllers\Admin\ImpersonationController::canImpersonate(auth()->user(), $u))
+                    <form id="impersonate-{{ $u->id }}" method="POST" action="{{ route('admin.users.impersonate', $u) }}"
+                          data-name="{{ $u->name }}" onsubmit="return confirm('Login sebagai ' + this.dataset.name + '?')" style="display: none;">
+                        @csrf
+                    </form>
+                @endif
+            @endforeach
             {{ $users->links() }}
         </div>
     </div>

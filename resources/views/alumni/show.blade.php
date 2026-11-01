@@ -19,6 +19,14 @@
                 <div><span class="text-gray-500">No. Telp</span><p class="font-medium">{{ $alumni->phone }}</p></div>
             </div>
 
+            @if ($alumni->user && \App\Http\Controllers\Admin\ImpersonationController::canImpersonate(auth()->user(), $alumni->user))
+                <form method="POST" action="{{ route('admin.users.impersonate', $alumni->user) }}"
+                      data-name="{{ $alumni->nama }}" onsubmit="return confirm('Login sebagai ' + this.dataset.name + '?')">
+                    @csrf
+                    <x-secondary-button type="submit">Login sebagai alumni ini</x-secondary-button>
+                </form>
+            @endif
+
             <div class="bg-white shadow-sm rounded-lg p-6">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-base font-semibold text-gray-800">Data Tracer Studi</h3>
