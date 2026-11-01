@@ -32,7 +32,6 @@ class AutoReportController extends Controller
             'faculties' => $isUniversityScoped ? Faculty::orderBy('name')->get() : collect(),
             'programStudies' => $isUniversityScoped ? StudyProgram::orderBy('name')->get() : collect(),
             'defaultYear' => now()->year,
-            'levels' => StudyProgram::LEVELS,
         ]);
     }
 

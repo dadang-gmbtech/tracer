@@ -36,14 +36,7 @@
 
                     <div>
                         <x-input-label value="Jenjang" />
-                        <div class="mt-1 flex flex-wrap items-center gap-5 py-2">
-                            @foreach ($levels as $level)
-                                <label class="flex items-center gap-2 text-sm">
-                                    <input type="checkbox" name="jenjang[]" value="{{ $level }}" class="rounded">
-                                    {{ $level }}
-                                </label>
-                            @endforeach
-                        </div>
+                        <x-jenjang-checklist class="mt-1" />
                         <p class="mt-1 text-xs text-gray-500">Kosongkan semua untuk menyertakan seluruh jenjang.</p>
                     </div>
 

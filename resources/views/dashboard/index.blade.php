@@ -88,15 +88,7 @@
                 @endif
                 <div>
                     <x-input-label value="Jenjang" />
-                    <div class="mt-1 flex flex-wrap items-center gap-5 py-2">
-                        @foreach (\App\Models\StudyProgram::LEVELS as $level)
-                            <label class="flex items-center gap-2 text-sm">
-                                <input type="checkbox" name="jenjang[]" value="{{ $level }}"
-                                       @checked(in_array($level, request('jenjang', []))) class="rounded">
-                                {{ $level }}
-                            </label>
-                        @endforeach
-                    </div>
+                    <x-jenjang-checklist :selected="request('jenjang', [])" class="mt-1" />
                 </div>
                 <x-primary-button>Filter</x-primary-button>
             </form>
