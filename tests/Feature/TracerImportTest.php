@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Alumni;
 use App\Models\Faculty;
 use App\Models\StudyProgram;
+use App\Models\TracerResponse;
 use App\Models\User;
 use App\Support\TracerFieldCodes;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -22,13 +23,13 @@ class TracerImportTest extends TestCase
         $this->seed(RolesAndPermissionsSeeder::class);
     }
 
-    private function csvFile(array $rows): UploadedFile
+    private function csvFile(array $rows, ?array $headers = null): UploadedFile
     {
         // Built with fputcsv rather than a plain implode(','): one of the
         // real headers ("Tahun Lulus\n Keluar") contains an embedded
         // newline, which a naive comma-join would split into a stray extra
         // line instead of keeping it quoted inside a single CSV field.
-        $headers = TracerFieldCodes::exportColumns();
+        $headers ??= TracerFieldCodes::exportColumns();
         $stream = fopen('php://temp', 'w+');
         fputcsv($stream, $headers);
 
@@ -88,6 +89,49 @@ class TracerImportTest extends TestCase
             'f8' => 1,
             'f502' => 2,
         ]);
+    }
+
+    public function test_waktu_update_sets_the_submission_date_used_by_the_monthly_recap(): void
+    {
+        $alumni = Alumni::factory()->create(['nim' => 'A1A100AAA']);
+
+        $file = $this->csvFile([[
+            'NIM/Nomor Mhs' => $alumni->nim,
+            'F8' => 1,
+            'waktu_update' => '15/08/2025',
+        ]], TracerFieldCodes::importColumns());
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin Universitas');
+
+        $this->actingAs($admin)->post(route('tracer.import'), ['file' => $file]);
+
+        $this->assertSame('2025-08-15', $alumni->tracerResponse()->first()->submitted_at->toDateString());
+    }
+
+    public function test_reimporting_without_waktu_update_keeps_the_existing_submission_date(): void
+    {
+        $alumni = Alumni::factory()->create(['nim' => 'A1A100AAA']);
+        TracerResponse::factory()->create(['alumni_id' => $alumni->id, 'f8' => 1, 'submitted_at' => '2025-03-10 09:00:00']);
+
+        $file = $this->csvFile([['NIM/Nomor Mhs' => $alumni->nim, 'F8' => 3]]);
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin Universitas');
+
+        $this->actingAs($admin)->post(route('tracer.import'), ['file' => $file]);
+
+        $response = $alumni->tracerResponse()->first();
+        $this->assertSame(3, (int) $response->f8);
+        $this->assertSame('2025-03-10', $response->submitted_at->toDateString());
+    }
+
+    public function test_the_import_template_ends_with_a_waktu_update_column(): void
+    {
+        $columns = TracerFieldCodes::importColumns();
+
+        $this->assertSame('waktu_update', end($columns));
+        $this->assertSame(TracerFieldCodes::exportColumns(), array_slice($columns, 0, -1));
     }
 
     public function test_f504_and_f506_columns_are_not_part_of_the_export_or_import_columns(): void

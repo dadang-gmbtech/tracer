@@ -18,12 +18,12 @@ class TracerResponsesTemplateExport implements FromArray, WithHeadings
 {
     public function headings(): array
     {
-        return TracerFieldCodes::exportColumns();
+        return TracerFieldCodes::importColumns();
     }
 
     public function array(): array
     {
-        $row = array_fill_keys(TracerFieldCodes::exportColumns(), '');
+        $row = array_fill_keys(TracerFieldCodes::importColumns(), '');
 
         $row = array_merge($row, [
             'Kode Prodi' => '54401',
@@ -33,6 +33,7 @@ class TracerResponsesTemplateExport implements FromArray, WithHeadings
             'F8' => '1',
             'F502' => '3',
             'F505' => '4500000',
+            'waktu_update' => '2025-08-15 10:30:00',
         ]);
 
         return [array_values($row)];

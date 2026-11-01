@@ -42,6 +42,13 @@
                         dengan kode prodi yang tidak ditemukan, atau di luar cakupan Anda, akan dilewati dan
                         dilaporkan.
                     </p>
+                    <p>
+                        Kolom terakhir, <strong>waktu_update</strong>, diisi tanggal alumni mengisi kuesioner (misalnya
+                        <code>2025-08-15</code>, <code>15/08/2025</code>, atau format tanggal Excel). Tanggal ini dipakai
+                        untuk <strong>Rekap Bulanan</strong> di dashboard. Kolom ini tidak ada di template nasional, jadi
+                        boleh dikosongkan: data yang sudah ada tetap memakai tanggal lamanya, dan data baru memakai tanggal
+                        impor.
+                    </p>
                     <p class="text-amber-700">
                         Catatan: alumni yang dibuat lewat impor ini <strong>belum bisa login</strong> (NIM &
                         Tanggal Lahir) karena file ini tidak membawa data tanggal lahir asli.

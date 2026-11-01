@@ -146,7 +146,12 @@ class TracerResponsesImport implements SkipsEmptyRows, ToCollection, WithChunkRe
 
         $data = $this->mapRow($row, $provincesByCode, $citiesByCode);
         $data['submitted_by_user_id'] = $this->importedBy->id;
-        $data['submitted_at'] = now();
+        // waktu_update drives the monthly recap. Left blank, an existing
+        // response keeps its date: re-uploading an export (which has no such
+        // column) must not move every response to the import month.
+        $data['submitted_at'] = TracerValueParser::date($row['waktu_update'] ?? null)
+            ?? $alumni->tracerResponse?->submitted_at
+            ?? now();
 
         if ($alumni->tracerResponse) {
             $alumni->tracerResponse->update($data);

@@ -41,6 +41,18 @@ class TracerFieldCodes
         ];
     }
 
+    /**
+     * The import template: the national columns plus an optional trailing
+     * waktu_update (when the questionnaire was filled), which the national
+     * template has no column for but the monthly recap is keyed by.
+     *
+     * @return list<string>
+     */
+    public static function importColumns(): array
+    {
+        return [...self::exportColumns(), 'waktu_update'];
+    }
+
     /** Small select/rating codes (1-5 scale or short enumerated options). */
     public static function integerCodes(): array
     {
