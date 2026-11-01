@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
 use Maatwebsite\Excel\Concerns\ToCollection;
+use Maatwebsite\Excel\Concerns\WithCalculatedFormulas;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
 /**
@@ -17,7 +18,7 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
  * "Admin Fakultas" (see Admin\UserController::import), otherwise taken from
  * kode_fakultas so Admin Universitas can import across faculties.
  */
-class SurveyorImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
+class SurveyorImport implements SkipsEmptyRows, ToCollection, WithCalculatedFormulas, WithHeadingRow
 {
     /** @var array<int, array{name: string, email: string, password: string}> */
     public array $created = [];

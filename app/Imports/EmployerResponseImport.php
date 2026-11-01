@@ -15,6 +15,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
 use Maatwebsite\Excel\Concerns\ToCollection;
+use Maatwebsite\Excel\Concerns\WithCalculatedFormulas;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
 /**
@@ -37,7 +38,7 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
  * Each row's write runs in its own transaction — see TracerResponsesImport
  * for why (a single failed row must not roll back the rest of the file).
  */
-class EmployerResponseImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
+class EmployerResponseImport implements SkipsEmptyRows, ToCollection, WithCalculatedFormulas, WithHeadingRow
 {
     /**
      * @var array<string, list<string>>

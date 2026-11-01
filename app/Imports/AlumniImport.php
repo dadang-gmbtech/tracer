@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
 use Maatwebsite\Excel\Concerns\ToCollection;
+use Maatwebsite\Excel\Concerns\WithCalculatedFormulas;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
 /**
@@ -47,7 +48,7 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
  * poisons the entire transaction and rolls back every other row too. A bad
  * row is now skipped and reported instead of failing the whole import.
  */
-class AlumniImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
+class AlumniImport implements SkipsEmptyRows, ToCollection, WithCalculatedFormulas, WithHeadingRow
 {
     public int $created = 0;
 

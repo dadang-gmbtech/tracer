@@ -11,6 +11,9 @@ use App\Support\TracerFieldCodes;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Tests\TestCase;
 
 class TracerImportTest extends TestCase
@@ -124,6 +127,52 @@ class TracerImportTest extends TestCase
         $response = $alumni->tracerResponse()->first();
         $this->assertSame(3, (int) $response->f8);
         $this->assertSame('2025-03-10', $response->submitted_at->toDateString());
+    }
+
+    public function test_cells_holding_formulas_linked_to_another_workbook_import_their_saved_values(): void
+    {
+        // A file whose NIM column is "=[1]Data!C2" (pulled from another
+        // workbook that isn't uploaded) used to import the formula text
+        // itself as the NIM. Excel saves each formula's last result in the
+        // file, and that is what should be read.
+        $alumni = Alumni::factory()->create(['nim' => 'A1A100AAA']);
+
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->fromArray([TracerFieldCodes::importColumns()]);
+        $nimColumn = array_search('NIM/Nomor Mhs', TracerFieldCodes::importColumns(), true) + 1;
+        $f8Column = array_search('F8', TracerFieldCodes::importColumns(), true) + 1;
+        $nimCell = Coordinate::stringFromColumnIndex($nimColumn).'2';
+        $sheet->setCellValue($nimCell, '=[1]Data!C2');
+        $sheet->setCellValue(Coordinate::stringFromColumnIndex($f8Column).'2', 1);
+
+        $path = tempnam(sys_get_temp_dir(), 'tracer').'.xlsx';
+        $writer = new Xlsx($spreadsheet);
+        $writer->setPreCalculateFormulas(false);
+        $writer->save($path);
+
+        // PhpSpreadsheet can't produce Excel's saved result for an external
+        // link, so add it to the sheet XML the way Excel writes it.
+        $zip = new \ZipArchive;
+        $zip->open($path);
+        $xml = $zip->getFromName('xl/worksheets/sheet1.xml');
+        $xml = preg_replace(
+            '#<c r="'.$nimCell.'"([^>]*)><f>\[1\]Data!C2</f></c>#',
+            '<c r="'.$nimCell.'"$1 t="str"><f>[1]Data!C2</f><v>A1A100AAA</v></c>',
+            $xml,
+        );
+        $zip->addFromString('xl/worksheets/sheet1.xml', $xml);
+        $zip->close();
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin Universitas');
+
+        $response = $this->actingAs($admin)->post(route('tracer.import'), [
+            'file' => new UploadedFile($path, 'tracer.xlsx', null, null, true),
+        ]);
+
+        $response->assertSessionHas('importSkipped', []);
+        $this->assertDatabaseHas('tracer_responses', ['alumni_id' => $alumni->id, 'f8' => 1]);
     }
 
     public function test_the_import_template_ends_with_a_waktu_update_column(): void

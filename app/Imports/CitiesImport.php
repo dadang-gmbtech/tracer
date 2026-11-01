@@ -7,6 +7,7 @@ use App\Models\Province;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
 use Maatwebsite\Excel\Concerns\ToCollection;
+use Maatwebsite\Excel\Concerns\WithCalculatedFormulas;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
 /**
@@ -21,7 +22,7 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
  * for the same reason as ProvincesImport — re-running this import corrects
  * the code on the existing row rather than creating a duplicate.
  */
-class CitiesImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
+class CitiesImport implements SkipsEmptyRows, ToCollection, WithCalculatedFormulas, WithHeadingRow
 {
     public int $created = 0;
 

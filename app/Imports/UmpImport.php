@@ -7,10 +7,11 @@ use App\Models\UmpSalary;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
 use Maatwebsite\Excel\Concerns\ToCollection;
+use Maatwebsite\Excel\Concerns\WithCalculatedFormulas;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
 /** Template columns: kode_provinsi, tahun, nominal. */
-class UmpImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
+class UmpImport implements SkipsEmptyRows, ToCollection, WithCalculatedFormulas, WithHeadingRow
 {
     public int $imported = 0;
 

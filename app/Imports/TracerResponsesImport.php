@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\RemembersChunkOffset;
 use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
 use Maatwebsite\Excel\Concerns\ToCollection;
+use Maatwebsite\Excel\Concerns\WithCalculatedFormulas;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
@@ -54,7 +55,7 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
  * back every other row too. A bad row is skipped and reported instead of
  * failing the whole import.
  */
-class TracerResponsesImport implements SkipsEmptyRows, ToCollection, WithChunkReading, WithHeadingRow
+class TracerResponsesImport implements SkipsEmptyRows, ToCollection, WithCalculatedFormulas, WithChunkReading, WithHeadingRow
 {
     use RemembersChunkOffset;
 

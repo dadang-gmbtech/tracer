@@ -7,6 +7,7 @@ use App\Models\Province;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
 use Maatwebsite\Excel\Concerns\ToCollection;
+use Maatwebsite\Excel\Concerns\WithCalculatedFormulas;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
 /**
@@ -23,7 +24,7 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
  * duplicate that would orphan every alumni/tracer_responses row already
  * pointing at the original province id.
  */
-class ProvincesImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
+class ProvincesImport implements SkipsEmptyRows, ToCollection, WithCalculatedFormulas, WithHeadingRow
 {
     public int $created = 0;
 

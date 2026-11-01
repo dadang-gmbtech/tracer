@@ -6,6 +6,7 @@ use App\Models\Country;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
 use Maatwebsite\Excel\Concerns\ToCollection;
+use Maatwebsite\Excel\Concerns\WithCalculatedFormulas;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
 /**
@@ -16,7 +17,7 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
  * that resolves to a non-empty code/name pair — see ProvincesImport/
  * CitiesImport, which use the same tolerance in reverse).
  */
-class CountriesImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
+class CountriesImport implements SkipsEmptyRows, ToCollection, WithCalculatedFormulas, WithHeadingRow
 {
     public int $created = 0;
 
