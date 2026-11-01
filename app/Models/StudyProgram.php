@@ -11,6 +11,12 @@ class StudyProgram extends Model
 {
     use HasFactory;
 
+    /**
+     * Jenjang values offered as filters (dashboard, export, laporan, daftar
+     * alumni), spelled exactly as the national data stores them in `level`.
+     */
+    public const LEVELS = ['D3', 'S1', 'S2', 'S3', 'Profesi', 'Sp-1'];
+
     protected $table = 'program_studies';
 
     protected $fillable = ['faculty_id', 'code', 'name', 'level'];

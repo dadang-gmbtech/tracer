@@ -88,8 +88,8 @@
                 @endif
                 <div>
                     <x-input-label value="Jenjang" />
-                    <div class="mt-1 flex gap-3 items-center h-[38px]">
-                        @foreach (['D3', 'S1', 'S2', 'S3'] as $level)
+                    <div class="mt-1 flex flex-wrap gap-x-3 gap-y-1 items-center min-h-[38px]">
+                        @foreach (\App\Models\StudyProgram::LEVELS as $level)
                             <label class="flex items-center gap-1 text-sm">
                                 <input type="checkbox" name="jenjang[]" value="{{ $level }}"
                                        @checked(in_array($level, request('jenjang', []))) class="rounded">
@@ -103,7 +103,7 @@
 
             <p class="text-xs text-gray-500 -mt-2">
                 Catatan: IKU (grafik &amp; rekap fakultas) hanya dihitung untuk lulusan jenjang D3 dan S1, sesuai
-                definisi resmi — lulusan S2/S3 tetap muncul di grafik lain (Responden, Bekerja, dst.) tapi tidak
+                definisi resmi — lulusan S2/S3/Profesi/Spesialis tetap muncul di grafik lain (Responden, Bekerja, dst.) tapi tidak
                 disertakan dalam persentase IKU.
             </p>
 

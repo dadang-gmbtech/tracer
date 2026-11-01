@@ -21,8 +21,6 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class AutoReportController extends Controller
 {
-    private const LEVELS = ['D3', 'S1', 'S2', 'S3'];
-
     public function form(Request $request): View
     {
         Gate::authorize('export-data');
@@ -34,7 +32,7 @@ class AutoReportController extends Controller
             'faculties' => $isUniversityScoped ? Faculty::orderBy('name')->get() : collect(),
             'programStudies' => $isUniversityScoped ? StudyProgram::orderBy('name')->get() : collect(),
             'defaultYear' => now()->year,
-            'levels' => self::LEVELS,
+            'levels' => StudyProgram::LEVELS,
         ]);
     }
 
@@ -48,7 +46,7 @@ class AutoReportController extends Controller
         $filters = array_filter([
             'faculty_id' => $request->integer('faculty_id') ?: null,
             'program_study_id' => $request->integer('program_study_id') ?: null,
-            'jenjang' => array_values(array_intersect((array) $request->input('jenjang', []), self::LEVELS)) ?: null,
+            'jenjang' => array_values(array_intersect((array) $request->input('jenjang', []), StudyProgram::LEVELS)) ?: null,
         ]);
 
         $summary = $dashboard->summary($user, $filters);

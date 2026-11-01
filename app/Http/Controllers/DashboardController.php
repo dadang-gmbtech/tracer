@@ -21,7 +21,7 @@ class DashboardController extends Controller
             return redirect($user->postLoginUrl());
         }
 
-        $jenjang = array_values(array_intersect((array) $request->input('jenjang', []), ['D3', 'S1', 'S2', 'S3']));
+        $jenjang = array_values(array_intersect((array) $request->input('jenjang', []), StudyProgram::LEVELS));
 
         $filters = array_filter([
             'faculty_id' => $request->integer('faculty_id') ?: null,

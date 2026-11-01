@@ -28,7 +28,7 @@
                     <x-input-label for="jenjang" value="Jenjang" />
                     <select id="jenjang" name="jenjang" class="mt-1 rounded-md border-gray-300 text-sm">
                         <option value="">Semua</option>
-                        @foreach (['D3', 'S1', 'S2', 'S3'] as $level)
+                        @foreach (\App\Models\StudyProgram::LEVELS as $level)
                             <option value="{{ $level }}" @selected(request('jenjang') === $level)>{{ $level }}</option>
                         @endforeach
                     </select>

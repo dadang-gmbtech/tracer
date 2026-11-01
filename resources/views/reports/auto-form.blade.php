@@ -36,7 +36,7 @@
 
                     <div>
                         <x-input-label value="Jenjang" />
-                        <div class="mt-1 flex gap-4 items-center">
+                        <div class="mt-1 flex flex-wrap gap-x-4 gap-y-1 items-center">
                             @foreach ($levels as $level)
                                 <label class="flex items-center gap-1 text-sm">
                                     <input type="checkbox" name="jenjang[]" value="{{ $level }}" class="rounded">

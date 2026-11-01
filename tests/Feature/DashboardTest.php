@@ -288,6 +288,28 @@ class DashboardTest extends TestCase
         $response->assertSee('Luar Negeri');
     }
 
+    public function test_dashboard_can_be_filtered_to_jenjang_profesi(): void
+    {
+        $profesi = StudyProgram::factory()->create(['level' => 'Profesi']);
+        $s1 = StudyProgram::factory()->create(['level' => 'S1']);
+        foreach ([$profesi, $s1, $s1] as $prodi) {
+            Alumni::factory()->create([
+                'faculty_id' => $prodi->faculty_id, 'program_study_id' => $prodi->id, 'graduation_year' => 2025,
+            ]);
+        }
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+
+        $this->actingAs($admin)
+            ->get(route('dashboard', ['jenjang' => ['Profesi']]))
+            ->assertOk()
+            ->assertSee('name="jenjang[]" value="Profesi"', false);
+
+        $summary = app(DashboardService::class)->summary($admin, ['jenjang' => ['Profesi']]);
+        $this->assertSame(1, $summary['data'][2025]['jumlah_alumni']);
+    }
+
     public function test_report_breakdown_ignores_zero_placeholders_left_by_imported_rows(): void
     {
         // Imported rows store 0 (not null) for unanswered ratings, salary and

@@ -183,6 +183,6 @@ class ExportController extends Controller
      */
     private function selectedJenjang(Request $request): array
     {
-        return array_values(array_intersect((array) $request->input('jenjang', []), ['D3', 'S1', 'S2', 'S3']));
+        return array_values(array_intersect((array) $request->input('jenjang', []), StudyProgram::LEVELS));
     }
 }

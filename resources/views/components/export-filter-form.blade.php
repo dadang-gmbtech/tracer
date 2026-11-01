@@ -45,8 +45,8 @@
 
     <div>
         <x-input-label value="Jenjang" />
-        <div class="mt-1 flex gap-4 items-center">
-            @foreach (['D3', 'S1', 'S2', 'S3'] as $level)
+        <div class="mt-1 flex flex-wrap gap-x-4 gap-y-1 items-center">
+            @foreach (\App\Models\StudyProgram::LEVELS as $level)
                 <label class="flex items-center gap-1 text-sm">
                     <input type="checkbox" name="jenjang[]" value="{{ $level }}" class="rounded">
                     {{ $level }}

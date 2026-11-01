@@ -66,7 +66,7 @@ class AutoReportTest extends TestCase
 
         $response = $this->actingAs($admin)->get(route('reports.auto.form'));
 
-        foreach (['D3', 'S1', 'S2', 'S3'] as $level) {
+        foreach (['D3', 'S1', 'S2', 'S3', 'Profesi', 'Sp-1'] as $level) {
             $response->assertSee('name="jenjang[]" value="'.$level.'"', false);
         }
     }
