@@ -122,15 +122,39 @@ class HomeContentManagementTest extends TestCase
 
         $admin = User::factory()->create();
         $admin->assignRole('Super Admin');
-        $this->actingAs($admin)->put(route('admin.home-content.update'), $this->validPayload(['show_reports' => 1]));
+
+        $this->actingAs($admin)->get(route('admin.home-content.edit'))->assertSee('Tidak Aktif')->assertSee('Aktifkan');
+        $this->actingAs($admin)->patch(route('admin.home-content.reports-visibility'), ['show_reports' => 1])
+            ->assertRedirect(route('admin.home-content.edit').'#laporan-tracer');
+        $this->assertTrue(HomePageContent::current()->show_reports);
         auth()->logout();
 
         $this->get(route('home'))->assertOk()->assertSee('Laporan Universitas 2025');
 
-        $this->actingAs($admin)->put(route('admin.home-content.update'), $this->validPayload(['show_reports' => 0]));
+        $this->actingAs($admin)->patch(route('admin.home-content.reports-visibility'), ['show_reports' => 0]);
         auth()->logout();
 
         $this->get(route('home'))->assertOk()->assertDontSee('Laporan Universitas 2025');
+    }
+
+    public function test_saving_the_content_form_leaves_the_reports_switch_alone(): void
+    {
+        HomePageContent::current()->update(['show_reports' => true]);
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+
+        $this->actingAs($admin)->put(route('admin.home-content.update'), $this->validPayload());
+
+        $this->assertTrue(HomePageContent::current()->show_reports);
+    }
+
+    public function test_admin_universitas_cannot_switch_the_reports_section(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin Universitas');
+
+        $this->actingAs($admin)->patch(route('admin.home-content.reports-visibility'), ['show_reports' => 1])->assertForbidden();
+        $this->assertFalse(HomePageContent::current()->show_reports);
     }
 
     public function test_only_university_level_reports_are_listed_and_downloadable(): void

@@ -78,6 +78,7 @@ class HomePageContent extends Model
                 'Kirim jawaban Anda — data otomatis tersimpan.',
             ],
             'footer_address' => 'Jl. Dr. Suparno, Karangwangkal, Purwokerto Utara, Banyumas, Jawa Tengah',
+            'show_reports' => false,
         ];
     }
 }

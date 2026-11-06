@@ -44,11 +44,31 @@ class HomeContentController extends Controller
             'alur_steps' => ['required', 'array', 'size:4'],
             'alur_steps.*' => ['required', 'string', 'max:255'],
             'footer_address' => ['required', 'string', 'max:500'],
-            'show_reports' => ['sometimes', 'boolean'],
         ]);
 
         HomePageContent::current()->update($data);
 
         return redirect()->route('admin.home-content.edit')->with('status', 'Konten halaman depan berhasil disimpan.');
+    }
+
+    /**
+     * Saved on its own, the moment the button is pressed — as a field inside
+     * the long content form it only took effect after "Simpan" at the very
+     * bottom, which the switch gave no hint of.
+     */
+    public function updateReportsVisibility(Request $request): RedirectResponse
+    {
+        Gate::authorize('manage-home-content');
+
+        $data = $request->validate(['show_reports' => ['required', 'boolean']]);
+
+        HomePageContent::current()->update(['show_reports' => (bool) $data['show_reports']]);
+
+        return redirect()->to(route('admin.home-content.edit').'#laporan-tracer')->with(
+            'status',
+            $data['show_reports']
+                ? 'Laporan Tracer Studi sekarang tampil di halaman depan.'
+                : 'Laporan Tracer Studi tidak lagi tampil di halaman depan.',
+        );
     }
 }

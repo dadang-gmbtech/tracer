@@ -130,6 +130,7 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('home-content', [HomeContentController::class, 'edit'])->name('home-content.edit');
         Route::put('home-content', [HomeContentController::class, 'update'])->name('home-content.update');
+        Route::patch('home-content/laporan', [HomeContentController::class, 'updateReportsVisibility'])->name('home-content.reports-visibility');
     });
 });
 
