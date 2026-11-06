@@ -33,6 +33,27 @@ class Report extends Model
         return $this->belongsTo(User::class, 'uploaded_by');
     }
 
+    /**
+     * title is a free-text label the uploader typed in and rarely carries
+     * the file's extension — downloading it as the filename as-is produces
+     * an extension-less file the OS doesn't know how to open.
+     */
+    public function downloadFilename(): string
+    {
+        $extension = pathinfo($this->file_path, PATHINFO_EXTENSION);
+
+        if ($extension && ! str_ends_with(strtolower($this->title), '.'.strtolower($extension))) {
+            return $this->title.'.'.$extension;
+        }
+
+        return $this->title;
+    }
+
+    public function fileExtension(): string
+    {
+        return strtoupper(pathinfo($this->file_path, PATHINFO_EXTENSION));
+    }
+
     public function scopeVisibleTo(Builder $query, User $user): Builder
     {
         if ($user->hasAnyRole(['Super Admin', 'Admin Universitas', 'Pimpinan Universitas'])) {

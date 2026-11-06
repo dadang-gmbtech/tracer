@@ -20,6 +20,8 @@ class HomeController extends Controller
             return redirect(auth()->user()->postLoginUrl());
         }
 
-        return view('home', ['content' => HomePageContent::current()]);
+        $content = HomePageContent::current();
+
+        return view('home', ['content' => $content, 'reports' => $content->publicReports()]);
     }
 }

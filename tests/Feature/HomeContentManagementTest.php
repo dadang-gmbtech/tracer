@@ -3,9 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\HomePageContent;
+use App\Models\Report;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class HomeContentManagementTest extends TestCase
@@ -99,5 +101,61 @@ class HomeContentManagementTest extends TestCase
         ]));
 
         $response->assertSessionHasErrors('alur_steps');
+    }
+
+    private function report(string $level, string $title): Report
+    {
+        return Report::create([
+            'level' => $level,
+            'title' => $title,
+            'file_path' => 'laporan-tracer/'.str()->slug($title).'.pdf',
+            'year' => 2025,
+            'uploaded_by' => User::factory()->create()->id,
+        ]);
+    }
+
+    public function test_the_reports_section_is_off_until_switched_on(): void
+    {
+        $this->report(Report::LEVEL_UNIVERSITAS, 'Laporan Universitas 2025');
+
+        $this->get(route('home'))->assertOk()->assertDontSee('Laporan Universitas 2025');
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+        $this->actingAs($admin)->put(route('admin.home-content.update'), $this->validPayload(['show_reports' => 1]));
+        auth()->logout();
+
+        $this->get(route('home'))->assertOk()->assertSee('Laporan Universitas 2025');
+
+        $this->actingAs($admin)->put(route('admin.home-content.update'), $this->validPayload(['show_reports' => 0]));
+        auth()->logout();
+
+        $this->get(route('home'))->assertOk()->assertDontSee('Laporan Universitas 2025');
+    }
+
+    public function test_only_university_level_reports_are_listed_and_downloadable(): void
+    {
+        Storage::fake('public');
+        $universitas = $this->report(Report::LEVEL_UNIVERSITAS, 'Laporan Universitas 2025');
+        $fakultas = $this->report(Report::LEVEL_FAKULTAS, 'Laporan Fakultas Teknik');
+        Storage::disk('public')->put($universitas->file_path, 'isi');
+        Storage::disk('public')->put($fakultas->file_path, 'isi');
+        HomePageContent::current()->update(['show_reports' => true]);
+
+        $this->get(route('home'))
+            ->assertSee('Laporan Universitas 2025')
+            ->assertDontSee('Laporan Fakultas Teknik');
+
+        $this->get(route('home.reports.download', $universitas))->assertOk()->assertDownload('Laporan Universitas 2025.pdf');
+        $this->get(route('home.reports.download', $fakultas))->assertNotFound();
+    }
+
+    public function test_reports_cannot_be_downloaded_publicly_while_the_section_is_off(): void
+    {
+        Storage::fake('public');
+        $universitas = $this->report(Report::LEVEL_UNIVERSITAS, 'Laporan Universitas 2025');
+        Storage::disk('public')->put($universitas->file_path, 'isi');
+
+        $this->get(route('home.reports.download', $universitas))->assertNotFound();
     }
 }

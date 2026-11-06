@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -15,7 +16,7 @@ class HomePageContent extends Model
     protected $fillable = [
         'hero_title', 'hero_subtitle', 'hero_description',
         'tentang_description', 'tentang_cards', 'alur_steps',
-        'footer_address',
+        'footer_address', 'show_reports',
     ];
 
     protected function casts(): array
@@ -23,7 +24,27 @@ class HomePageContent extends Model
         return [
             'tentang_cards' => 'array',
             'alur_steps' => 'array',
+            'show_reports' => 'boolean',
         ];
+    }
+
+    /**
+     * Reports listed on the landing page when show_reports is on: only
+     * university-level ones, i.e. uploaded by Super Admin or Admin
+     * Universitas (ReportController::store() sets the level from the
+     * uploader's role), never a faculty's or prodi's own report.
+     *
+     * @return Collection<int, Report>
+     */
+    public function publicReports(): Collection
+    {
+        if (! $this->show_reports) {
+            return new Collection;
+        }
+
+        return Report::where('level', Report::LEVEL_UNIVERSITAS)
+            ->orderByDesc('year')->orderByDesc('created_at')
+            ->get();
     }
 
     /**

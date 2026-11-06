@@ -20,6 +20,9 @@
             <nav class="hidden sm:flex items-center gap-6 text-sm text-gray-600">
                 <a href="#tentang" class="hover:text-blue-700 transition-colors">Tentang</a>
                 <a href="#alur" class="hover:text-blue-700 transition-colors">Alur Pengisian</a>
+                @if ($reports->isNotEmpty())
+                    <a href="#laporan" class="hover:text-blue-700 transition-colors">Laporan</a>
+                @endif
             </nav>
             <a href="{{ route('login') }}"
                class="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium text-white bg-blue-700 hover:bg-blue-800 transition-colors shadow-sm hover:shadow">
@@ -121,6 +124,44 @@
             </div>
         </div>
     </section>
+
+    @if ($reports->isNotEmpty())
+        {{-- Inline styles for anything new: deploys don't rebuild the Tailwind
+             bundle, so classes not already used elsewhere wouldn't exist. --}}
+        <section id="laporan" class="bg-gray-50">
+            <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+                <div class="text-center">
+                    <h2 class="text-2xl font-bold text-gray-800">Laporan Tracer Studi</h2>
+                    <p class="mt-4 max-w-3xl mx-auto text-gray-600">
+                        Hasil tracer studi Universitas Jenderal Soedirman yang dapat diunduh publik.
+                    </p>
+                </div>
+
+                <div style="margin-top: 2.5rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr)); gap: 1.25rem;">
+                    @foreach ($reports as $report)
+                        <div class="bg-white shadow-sm rounded-lg p-6"
+                             style="display: flex; flex-direction: column; gap: 0.75rem;">
+                            <div style="display: flex; align-items: flex-start; gap: 0.75rem;">
+                                <div class="bg-blue-50 text-blue-700"
+                                     style="flex: none; width: 2.75rem; height: 2.75rem; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700;">
+                                    {{ $report->fileExtension() ?: 'FILE' }}
+                                </div>
+                                <div style="min-width: 0;">
+                                    <div class="font-semibold text-gray-800" style="overflow-wrap: anywhere;">{{ $report->title }}</div>
+                                    <div class="text-sm text-gray-600">Tahun {{ $report->year }}</div>
+                                </div>
+                            </div>
+                            <a href="{{ route('home.reports.download', $report) }}"
+                               class="text-white bg-blue-700 hover:bg-blue-800 transition-colors"
+                               style="margin-top: auto; display: inline-flex; align-items: center; justify-content: center; padding: 0.5rem 1rem; border-radius: 0.375rem; font-size: 0.875rem; font-weight: 500; text-decoration: none;">
+                                Unduh Laporan
+                            </a>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        </section>
+    @endif
 
     <footer class="bg-gray-800 text-gray-300">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center text-sm">

@@ -26,6 +26,7 @@ use App\Http\Controllers\TracerResponseController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
+Route::get('/laporan-tracer/{report}/unduh', [ReportController::class, 'publicDownload'])->name('home.reports.download');
 
 // Custom auth (SSO stub + NIM/tanggal lahir) — routes/auth.php keeps email+password for staff.
 Route::middleware('guest')->group(function () {

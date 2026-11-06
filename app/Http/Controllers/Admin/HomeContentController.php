@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\HomePageContent;
+use App\Models\Report;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -21,7 +22,11 @@ class HomeContentController extends Controller
     {
         Gate::authorize('manage-home-content');
 
-        return view('admin.home-content.edit', ['content' => HomePageContent::current()]);
+        return view('admin.home-content.edit', [
+            'content' => HomePageContent::current(),
+            'universityReports' => Report::where('level', Report::LEVEL_UNIVERSITAS)
+                ->orderByDesc('year')->orderByDesc('created_at')->get(),
+        ]);
     }
 
     public function update(Request $request): RedirectResponse
@@ -39,6 +44,7 @@ class HomeContentController extends Controller
             'alur_steps' => ['required', 'array', 'size:4'],
             'alur_steps.*' => ['required', 'string', 'max:255'],
             'footer_address' => ['required', 'string', 'max:500'],
+            'show_reports' => ['sometimes', 'boolean'],
         ]);
 
         HomePageContent::current()->update($data);

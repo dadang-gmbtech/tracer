@@ -77,6 +77,49 @@
                     @endforeach
                 </div>
 
+                <div class="bg-white shadow-sm rounded-lg p-6 space-y-4"
+                     x-data="{ on: {{ old('show_reports', $content->show_reports) ? 'true' : 'false' }} }">
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+                        <div>
+                            <h3 class="font-semibold text-gray-800">Laporan Tracer Studi</h3>
+                            <p class="text-sm text-gray-600">Daftar laporan yang bisa diunduh pengunjung halaman depan.</p>
+                        </div>
+                        <input type="hidden" name="show_reports" value="{{ old('show_reports', $content->show_reports) ? 1 : 0 }}" :value="on ? 1 : 0">
+                        <button type="button" role="switch" :aria-checked="on.toString()" @click="on = ! on"
+                                style="display: inline-flex; align-items: center; gap: 0.6rem; background: none; border: 0; padding: 0; cursor: pointer;">
+                            <span :style="on ? 'background: #1d4ed8' : 'background: #d1d5db'"
+                                  style="position: relative; width: 2.75rem; height: 1.5rem; border-radius: 9999px; transition: background .15s;">
+                                <span :style="on ? 'transform: translateX(1.25rem)' : 'transform: translateX(0)'"
+                                      style="position: absolute; top: 0.125rem; left: 0.125rem; width: 1.25rem; height: 1.25rem; border-radius: 9999px; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.2); transition: transform .15s;"></span>
+                            </span>
+                            <span class="text-sm font-medium" :style="on ? 'color: #1d4ed8' : 'color: #6b7280'" x-text="on ? 'Aktif' : 'Tidak Aktif'"></span>
+                        </button>
+                    </div>
+
+                    <p class="text-sm" :style="on ? 'color: #1e40af' : 'color: #6b7280'"
+                       x-text="on ? 'Bagian Laporan Tracer Studi tampil di halaman depan setelah disimpan.' : 'Bagian Laporan Tracer Studi tidak tampil di halaman depan.'"></p>
+
+                    <div>
+                        <p class="text-sm font-medium text-gray-700">Laporan yang akan ditampilkan ({{ $universityReports->count() }}):</p>
+                        <p class="text-xs text-gray-500">
+                            Hanya laporan yang diunggah Super Admin atau Admin Universitas. Laporan dari admin fakultas/prodi
+                            tidak ditampilkan. Tambah atau hapus laporan lewat menu
+                            <a href="{{ route('reports.index') }}" class="text-blue-600 hover:underline">Laporan</a>.
+                        </p>
+                        @if ($universityReports->isEmpty())
+                            <p class="text-sm text-gray-400" style="margin-top: 0.5rem;">
+                                Belum ada laporan tingkat universitas. Bagian ini tidak akan tampil walau saklarnya aktif.
+                            </p>
+                        @else
+                            <ul class="text-sm text-gray-700" style="margin-top: 0.5rem; padding-left: 1.25rem; list-style: disc;">
+                                @foreach ($universityReports as $report)
+                                    <li>{{ $report->title }} ({{ $report->year }})</li>
+                                @endforeach
+                            </ul>
+                        @endif
+                    </div>
+                </div>
+
                 <div class="bg-white shadow-sm rounded-lg p-6 space-y-4">
                     <h3 class="font-semibold text-gray-800">Footer</h3>
                     <div>

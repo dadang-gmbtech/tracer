@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\HomePageContent;
 use App\Models\Report;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\RedirectResponse;
@@ -69,18 +70,19 @@ class ReportController extends Controller
     {
         $this->authorize('view', $report);
 
-        // title is a free-text label the uploader typed in and rarely
-        // carries the file's extension — downloading it as the filename
-        // as-is produces an extension-less file the OS doesn't know how to
-        // open, even though the content itself downloaded fine.
-        $extension = pathinfo($report->file_path, PATHINFO_EXTENSION);
-        $filename = $report->title;
+        return Storage::disk('public')->download($report->file_path, $report->downloadFilename());
+    }
 
-        if ($extension && ! str_ends_with(strtolower($filename), '.'.strtolower($extension))) {
-            $filename .= '.'.$extension;
-        }
+    /**
+     * Public download from the landing page — no login, so it's limited to
+     * exactly what the page lists: university-level reports, and only while
+     * the "Laporan Tracer Studi" section is switched on.
+     */
+    public function publicDownload(Report $report): StreamedResponse
+    {
+        abort_unless(HomePageContent::current()->publicReports()->contains($report), 404);
 
-        return Storage::disk('public')->download($report->file_path, $filename);
+        return Storage::disk('public')->download($report->file_path, $report->downloadFilename());
     }
 
     public function destroy(Report $report): RedirectResponse
