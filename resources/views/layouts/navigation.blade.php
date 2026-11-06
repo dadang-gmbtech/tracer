@@ -14,6 +14,7 @@
     // link too.
     $canViewAlumni = $user->can('viewAny', \App\Models\Alumni::class);
     $isAlumni = $user->hasRole('Alumni');
+    $isSuperAdmin = $user->hasRole('Super Admin');
 @endphp
 
 <nav x-data="{ open: false }" class="bg-white border-b border-gray-100">
@@ -82,6 +83,9 @@
                             <x-slot name="content">
                                 @if ($canManageUsers)
                                     <x-dropdown-link :href="route('admin.users.index')">Manajemen User</x-dropdown-link>
+                                @endif
+                                @if ($isSuperAdmin)
+                                    <x-dropdown-link :href="route('admin.activity-logs.index')">Log Aktivitas</x-dropdown-link>
                                 @endif
                                 @if ($canImportData)
                                     <x-dropdown-link :href="route('alumni.import.form')">Impor Data Alumni</x-dropdown-link>
@@ -163,6 +167,9 @@
             @endif
             @if ($canManageUsers)
                 <x-responsive-nav-link :href="route('admin.users.index')">Manajemen User</x-responsive-nav-link>
+            @endif
+            @if ($isSuperAdmin)
+                <x-responsive-nav-link :href="route('admin.activity-logs.index')">Log Aktivitas</x-responsive-nav-link>
             @endif
             @if ($canManageMaster)
                 <x-responsive-nav-link :href="route('admin.faculties.index')">Fakultas</x-responsive-nav-link>

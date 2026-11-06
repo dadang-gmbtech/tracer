@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\CityController;
 use App\Http\Controllers\Admin\CountryController;
 use App\Http\Controllers\Admin\FacultyController;
@@ -100,6 +101,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('users/import', [UserController::class, 'import'])->name('users.import');
         Route::post('users/bulk-destroy', [UserController::class, 'bulkDestroy'])->name('users.bulk-destroy');
         Route::post('users/{user}/impersonate', [ImpersonationController::class, 'start'])->name('users.impersonate');
+        Route::get('activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
         Route::resource('users', UserController::class)->except(['show']);
 
         Route::resource('faculties', FacultyController::class)->except(['show']);
