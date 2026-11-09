@@ -38,7 +38,7 @@
                 </div>
 
                 @if ($alumni->tracerResponse)
-                    <p class="text-sm text-gray-600">Terakhir diperbarui: {{ $alumni->tracerResponse->submitted_at?->translatedFormat('d F Y H:i') }}</p>
+                    <p class="text-sm text-gray-600">Terakhir diperbarui: {{ $alumni->tracerResponse->submitted_at?->timezone(config('app.display_timezone'))->translatedFormat('d F Y H:i') }} WIB</p>
                 @else
                     <p class="text-sm text-gray-400">Alumni ini belum mengisi kuesioner tracer studi.</p>
                 @endif

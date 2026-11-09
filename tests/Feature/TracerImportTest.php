@@ -101,7 +101,7 @@ class TracerImportTest extends TestCase
         $file = $this->csvFile([[
             'NIM/Nomor Mhs' => $alumni->nim,
             'F8' => 1,
-            'waktu_update' => '15/08/2025',
+            'waktu_update' => '15/08/2025 10:30',
         ]], TracerFieldCodes::importColumns());
 
         $admin = User::factory()->create();
@@ -109,7 +109,10 @@ class TracerImportTest extends TestCase
 
         $this->actingAs($admin)->post(route('tracer.import'), ['file' => $file]);
 
-        $this->assertSame('2025-08-15', $alumni->tracerResponse()->first()->submitted_at->toDateString());
+        // Typed as WIB, stored as UTC.
+        $submittedAt = $alumni->tracerResponse()->first()->submitted_at;
+        $this->assertSame('2025-08-15 03:30:00', $submittedAt->toDateTimeString());
+        $this->assertSame('2025-08-15 10:30', $submittedAt->timezone('Asia/Jakarta')->format('Y-m-d H:i'));
     }
 
     public function test_reimporting_without_waktu_update_keeps_the_existing_submission_date(): void

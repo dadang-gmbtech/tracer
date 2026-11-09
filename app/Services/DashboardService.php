@@ -394,7 +394,8 @@ class DashboardService
             foreach ([$yearA, $yearB] as $year) {
                 $responses = $alumni->where('graduation_year', $year)
                     ->map(fn (Alumni $a) => $a->tracerResponse)
-                    ->filter(fn (?TracerResponse $r) => $r !== null && $r->submitted_at !== null && (int) $r->submitted_at->format('n') === $month);
+                    ->filter(fn (?TracerResponse $r) => $r !== null && $r->submitted_at !== null
+                        && (int) $r->submitted_at->timezone(config('app.display_timezone'))->format('n') === $month);
 
                 $bekerja = $responses->filter(fn (TracerResponse $r) => (int) $r->f8 === TracerResponse::STATUS_BEKERJA);
                 $waktuTunggu = $bekerja->pluck('f502')->filter(fn ($v) => $v !== null);

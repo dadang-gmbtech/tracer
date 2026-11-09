@@ -11,6 +11,7 @@ use App\Services\AlumniProvisioningService;
 use App\Support\ImportScopeGuard;
 use App\Support\TracerFieldCodes;
 use App\Support\TracerValueParser;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\RemembersChunkOffset;
@@ -150,7 +151,9 @@ class TracerResponsesImport implements SkipsEmptyRows, ToCollection, WithCalcula
         // waktu_update drives the monthly recap. Left blank, an existing
         // response keeps its date: re-uploading an export (which has no such
         // column) must not move every response to the import month.
-        $data['submitted_at'] = TracerValueParser::date($row['waktu_update'] ?? null)
+        // The file's times are WIB wall-clock times; storage is UTC.
+        $waktuUpdate = TracerValueParser::date($row['waktu_update'] ?? null);
+        $data['submitted_at'] = ($waktuUpdate ? Carbon::parse($waktuUpdate, config('app.display_timezone'))->utc() : null)
             ?? $alumni->tracerResponse?->submitted_at
             ?? now();
 

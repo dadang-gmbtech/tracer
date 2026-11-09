@@ -67,6 +67,10 @@ return [
 
     'timezone' => 'UTC',
 
+    // Times are stored in UTC (above) and shown, and typed in, as WIB.
+    // Switching 'timezone' itself would shift every timestamp already saved.
+    'display_timezone' => env('APP_DISPLAY_TIMEZONE', 'Asia/Jakarta'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Locale Configuration

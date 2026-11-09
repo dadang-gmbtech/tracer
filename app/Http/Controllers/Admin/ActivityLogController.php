@@ -20,6 +20,8 @@ class ActivityLogController extends Controller
             ? ActivityLog::CATEGORY_ALUMNI
             : ActivityLog::CATEGORY_ADMIN;
 
+        $displayTz = config('app.display_timezone');
+
         $logs = ActivityLog::query()
             ->where('category', $category)
             ->with(['impersonator:id,name', 'alumni:id,nim,nama'])
@@ -32,8 +34,13 @@ class ActivityLogController extends Controller
             })
             ->when($request->filled('aktivitas'), fn (Builder $q) => $q->where('description', $request->string('aktivitas')->value()))
             ->when($request->input('status') === 'gagal', fn (Builder $q) => $q->where('succeeded', false))
-            ->when($request->filled('dari'), fn (Builder $q) => $q->whereDate('created_at', '>=', $request->date('dari')))
-            ->when($request->filled('sampai'), fn (Builder $q) => $q->whereDate('created_at', '<=', $request->date('sampai')))
+            // The dates picked are WIB days; created_at is stored in UTC.
+            ->when($request->filled('dari'), fn (Builder $q) => $q->where(
+                'created_at', '>=', $request->date('dari', null, $displayTz)->startOfDay()->utc(),
+            ))
+            ->when($request->filled('sampai'), fn (Builder $q) => $q->where(
+                'created_at', '<=', $request->date('sampai', null, $displayTz)->endOfDay()->utc(),
+            ))
             ->latest('id')
             ->paginate(50)
             ->withQueryString();

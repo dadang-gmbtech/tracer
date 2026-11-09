@@ -288,6 +288,21 @@ class DashboardTest extends TestCase
         $response->assertSee('Luar Negeri');
     }
 
+    public function test_monthly_recap_groups_by_the_wib_month(): void
+    {
+        // 31 Jul 20:00 UTC is already 1 Aug 03:00 WIB.
+        $alumni = Alumni::factory()->create(['graduation_year' => 2025]);
+        TracerResponse::factory()->create(['alumni_id' => $alumni->id, 'f8' => 1, 'submitted_at' => '2025-07-31 20:00:00']);
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+
+        $rows = collect(app(DashboardService::class)->monthlyBreakdown($admin, 2025, 2024))->keyBy('month');
+
+        $this->assertSame(0, $rows[7][2025]['jumlah_lulusan_bekerja']);
+        $this->assertSame(1, $rows[8][2025]['jumlah_lulusan_bekerja']);
+    }
+
     public function test_dashboard_can_be_filtered_to_jenjang_profesi(): void
     {
         $profesi = StudyProgram::factory()->create(['level' => 'Profesi']);

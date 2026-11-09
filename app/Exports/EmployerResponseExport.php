@@ -63,7 +63,7 @@ class EmployerResponseExport implements FromQuery, WithChunkReading, WithHeading
             $response->q5_bahasa_asing,
             $response->q6_keahlian,
             $response->q7_integritas,
-            $response->created_at?->format('Y-m-d H:i:s'),
+            $response->created_at?->timezone(config('app.display_timezone'))->format('Y-m-d H:i:s'),
         ];
     }
 }

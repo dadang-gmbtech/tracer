@@ -90,7 +90,7 @@
                                 ]);
                             @endphp
                             <tr style="vertical-align: top;">
-                                <td class="px-4 py-3" style="white-space: nowrap;">{{ $log->created_at->translatedFormat('d M Y H:i:s') }}</td>
+                                <td class="px-4 py-3" style="white-space: nowrap;">{{ $log->created_at->timezone(config('app.display_timezone'))->translatedFormat('d M Y H:i:s') }} WIB</td>
                                 <td class="px-4 py-3">
                                     <div class="font-medium">{{ $log->actor_name ?? '-' }}</div>
                                     @if ($log->actor_role)

@@ -467,7 +467,7 @@
     @endif
 
     <div class="footer">
-        Dibuat otomatis oleh Sistem Tracer Studi UNSOED pada {{ $generatedAt->translatedFormat('d F Y H:i') }} WIB
+        Dibuat otomatis oleh Sistem Tracer Studi UNSOED pada {{ $generatedAt->timezone(config('app.display_timezone'))->translatedFormat('d F Y H:i') }} WIB
         oleh {{ $generatedBy }}.
     </div>
 </body>

@@ -139,6 +139,27 @@ class ActivityLogTest extends TestCase
         $this->assertDatabaseHas('activity_logs', ['action' => 'profile.destroy', 'user_id' => null, 'actor_name' => $user->name]);
     }
 
+    public function test_log_times_are_shown_and_filtered_in_wib(): void
+    {
+        // 23:30 UTC on 8 Nov is 06:30 WIB on 9 Nov.
+        $log = ActivityLog::create(['category' => 'admin', 'actor_name' => 'Admin Pagi', 'action' => 'login', 'description' => 'Login']);
+        $log->forceFill(['created_at' => '2026-11-08 23:30:00'])->save();
+
+        $superAdmin = $this->userWithRole('Super Admin');
+
+        $this->actingAs($superAdmin)
+            ->get(route('admin.activity-logs.index'))
+            ->assertSee('09 Nov 2026 06:30:00 WIB');
+
+        $this->actingAs($superAdmin)
+            ->get(route('admin.activity-logs.index', ['dari' => '2026-11-09', 'sampai' => '2026-11-09']))
+            ->assertSee('Admin Pagi');
+
+        $this->actingAs($superAdmin)
+            ->get(route('admin.activity-logs.index', ['dari' => '2026-11-08', 'sampai' => '2026-11-08']))
+            ->assertDontSee('Admin Pagi');
+    }
+
     public function test_only_super_admin_can_view_the_log_and_each_tab_shows_its_own_category(): void
     {
         ActivityLog::create(['category' => 'admin', 'actor_name' => 'Admin Satu', 'action' => 'login', 'description' => 'Login']);

@@ -32,7 +32,7 @@ class ExportController extends Controller
 
         $query = $this->scopedAlumniQuery($request);
 
-        return Excel::download(new TracerResponsesExport($query), 'tracer-responses-'.now()->format('Ymd-His').'.xlsx');
+        return Excel::download(new TracerResponsesExport($query), 'tracer-responses-'.now(config('app.display_timezone'))->format('Ymd-His').'.xlsx');
     }
 
     public function alumniForm(Request $request): View
@@ -47,7 +47,7 @@ class ExportController extends Controller
 
         $query = $this->scopedAlumniQuery($request);
 
-        return Excel::download(new AlumniExport($query), 'alumni-'.now()->format('Ymd-His').'.xlsx');
+        return Excel::download(new AlumniExport($query), 'alumni-'.now(config('app.display_timezone'))->format('Ymd-His').'.xlsx');
     }
 
     public function employerResponsesForm(Request $request): View
@@ -62,7 +62,7 @@ class ExportController extends Controller
 
         $query = $this->scopedEmployerResponseQuery($request);
 
-        return Excel::download(new EmployerResponseExport($query), 'pengguna-alumni-'.now()->format('Ymd-His').'.xlsx');
+        return Excel::download(new EmployerResponseExport($query), 'pengguna-alumni-'.now(config('app.display_timezone'))->format('Ymd-His').'.xlsx');
     }
 
     public function dashboard(Request $request, DashboardService $dashboard): BinaryFileResponse
@@ -76,7 +76,7 @@ class ExportController extends Controller
 
         $summary = $dashboard->summary($request->user(), $filters);
 
-        return Excel::download(new DashboardSummaryExport($summary), 'ringkasan-dashboard-'.now()->format('Ymd-His').'.xlsx');
+        return Excel::download(new DashboardSummaryExport($summary), 'ringkasan-dashboard-'.now(config('app.display_timezone'))->format('Ymd-His').'.xlsx');
     }
 
     /**
