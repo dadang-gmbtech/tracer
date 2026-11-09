@@ -288,6 +288,40 @@ class DashboardTest extends TestCase
         $response->assertSee('Luar Negeri');
     }
 
+    public function test_the_iku_breakdown_adds_up_to_the_dashboard_iku_and_competencies_skip_zeros(): void
+    {
+        $prodi = StudyProgram::factory()->create(['level' => 'S1']);
+        $make = function (?array $tracer) use ($prodi) {
+            $alumni = Alumni::factory()->create([
+                'faculty_id' => $prodi->faculty_id, 'program_study_id' => $prodi->id, 'graduation_year' => 2025,
+            ]);
+            if ($tracer) {
+                TracerResponse::factory()->create(['alumni_id' => $alumni->id, ...$tracer]);
+            }
+        };
+        $make(['f8' => 1, 'f502' => 3, 'f505' => 9_000_000, 'f1761' => 3, 'f1762' => 5]);
+        $make(['f8' => 4, 'f1761' => 0, 'f1762' => 0]);
+        $make(['f8' => 1, 'f502' => 14, 'f505' => 9_000_000]);
+        $make(null);
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+        $service = app(DashboardService::class);
+
+        $iku = $service->reportBreakdown($admin, 2025)['iku'];
+        $this->assertSame(4, $iku['lulusan']);
+        $this->assertSame(1, $iku['tidak_mengisi']);
+        $this->assertSame(2, $iku['komponen']['bekerja']['jumlah']);
+        $this->assertSame(1, $iku['masa_tunggu_tidak_dihitung']);
+        $this->assertSame(2, $iku['tanpa_data_ump']);
+        $this->assertEquals($service->summary($admin)['data'][2025]['iku_berdasar_lulusan'], $iku['nilai']);
+
+        $kompetensi = collect($service->reportBreakdown($admin, 2025)['kompetensi'])->keyBy('label');
+        $this->assertEquals(3.0, $kompetensi['Etika']['saat_lulus']);
+        $this->assertEquals(2.0, $kompetensi['Etika']['selisih']);
+        $this->assertSame(1, $kompetensi['Etika']['n']);
+    }
+
     public function test_monthly_recap_groups_by_the_wib_month(): void
     {
         // 31 Jul 20:00 UTC is already 1 Aug 03:00 WIB.

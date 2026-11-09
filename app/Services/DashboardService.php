@@ -264,6 +264,8 @@ class DashboardService
             ]),
             'cara_mencari_kerja' => $this->caraMencariKerja($responses),
             'metode_pembelajaran' => $this->metodePembelajaran($responses),
+            'kompetensi' => $this->kompetensi($responses),
+            'iku' => $this->ikuBreakdown($alumni, $year),
         ];
     }
 
@@ -334,6 +336,119 @@ class DashboardService
         uasort($items, fn ($a, $b) => $b['jumlah'] <=> $a['jumlah']);
 
         return ['basis' => $basis, 'items' => $items];
+    }
+
+    /**
+     * F1761-F1782: each competency rated twice on 1 (Sangat Rendah) to 5
+     * (Sangat Tinggi) — A (odd code) how well the graduate mastered it at
+     * graduation, B (even code) how much their job needs it. As with the
+     * learning methods, only 1-5 counts and unanswered competencies are left out.
+     *
+     * @param  Collection<int, TracerResponse>  $responses
+     * @return list<array{label: string, saat_lulus: float, dibutuhkan: float, selisih: float, n: int}>
+     */
+    private function kompetensi(Collection $responses): array
+    {
+        $labels = [
+            'Etika' => [1761, 1762], 'Keahlian berdasarkan bidang ilmu' => [1763, 1764], 'Bahasa Inggris' => [1765, 1766],
+            'Penggunaan teknologi informasi' => [1767, 1768], 'Komunikasi' => [1769, 1770], 'Kerja sama tim' => [1771, 1772],
+            'Pengembangan diri' => [1773, 1774], 'Berpikir kritis' => [1775, 1776], 'Kreativitas' => [1777, 1778],
+            'Kewirausahaan' => [1779, 1780], 'Adaptasi' => [1781, 1782],
+        ];
+
+        $answered = fn (string $field) => $responses->pluck($field)
+            ->filter(fn ($v) => $v !== null && (int) $v >= 1 && (int) $v <= 5)
+            ->map(fn ($v) => (int) $v);
+
+        $items = [];
+        foreach ($labels as $label => [$a, $b]) {
+            $saatLulus = $answered("f{$a}");
+            $dibutuhkan = $answered("f{$b}");
+
+            if ($saatLulus->isEmpty() || $dibutuhkan->isEmpty()) {
+                continue;
+            }
+
+            $items[] = [
+                'label' => $label,
+                'saat_lulus' => round($saatLulus->avg(), 2),
+                'dibutuhkan' => round($dibutuhkan->avg(), 2),
+                'selisih' => round($dibutuhkan->avg() - $saatLulus->avg(), 2),
+                'n' => $saatLulus->count(),
+            ];
+        }
+
+        return $items;
+    }
+
+    /**
+     * Where the IKU figure comes from, for D3/S1 alumni of one graduation
+     * year: what each status contributes, and what holds the score down —
+     * alumni who never answered (counted as 0), work found after 12 months,
+     * pay at or below 1.2 x UMP, and work provinces with no UMP on record
+     * (which the calculator can only treat as below it).
+     *
+     * @param  Collection<int, Alumni>  $alumni
+     * @return array<string, mixed>
+     */
+    private function ikuBreakdown(Collection $alumni, int $year): array
+    {
+        $umpLookup = $this->umpLookup();
+        $eligible = $alumni->filter(fn (Alumni $a) => in_array($a->studyProgram?->level, self::IKU_ELIGIBLE_LEVELS, true));
+
+        $komponen = array_fill_keys(['bekerja', 'wiraswasta', 'studi_lanjut', 'lainnya'], ['jumlah' => 0, 'bobot' => 0.0]);
+        $tidakMengisi = 0;
+        $bekerjaWiraswasta = 0;
+        $gajiDiAtasUmp = 0;
+        $tanpaDataUmp = 0;
+        $masaTungguTidakDihitung = 0;
+
+        foreach ($eligible as $a) {
+            $r = $a->tracerResponse;
+            if (! $r) {
+                $tidakMengisi++;
+
+                continue;
+            }
+
+            $f8 = (int) $r->f8;
+            $key = match ($f8) {
+                TracerResponse::STATUS_BEKERJA => 'bekerja',
+                TracerResponse::STATUS_WIRASWASTA => 'wiraswasta',
+                TracerResponse::STATUS_MELANJUTKAN_STUDI => 'studi_lanjut',
+                default => 'lainnya',
+            };
+            $ump = $umpLookup->get($r->work_province_id.'-'.$year);
+
+            $komponen[$key]['jumlah']++;
+            $komponen[$key]['bobot'] += $this->iku->bobot($r, $ump);
+
+            if (in_array($key, ['bekerja', 'wiraswasta'], true)) {
+                $bekerjaWiraswasta++;
+                if ($r->f502 === null || (int) $r->f502 >= 12) {
+                    $masaTungguTidakDihitung++;
+                }
+                if ($ump === null) {
+                    $tanpaDataUmp++;
+                } elseif ($this->iku->gajiMemenuhiUmp($r->f505, $ump)) {
+                    $gajiDiAtasUmp++;
+                }
+            }
+        }
+
+        $bobotTotal = array_sum(array_column($komponen, 'bobot'));
+
+        return [
+            'lulusan' => $eligible->count(),
+            'tidak_mengisi' => $tidakMengisi,
+            'komponen' => array_map(fn ($k) => ['jumlah' => $k['jumlah'], 'bobot' => round($k['bobot'], 2)], $komponen),
+            'bobot_total' => round($bobotTotal, 2),
+            'nilai' => $this->percent($bobotTotal, $eligible->count()),
+            'bekerja_wiraswasta' => $bekerjaWiraswasta,
+            'gaji_di_atas_ump' => $gajiDiAtasUmp,
+            'tanpa_data_ump' => $tanpaDataUmp,
+            'masa_tunggu_tidak_dihitung' => $masaTungguTidakDihitung,
+        ];
     }
 
     /**

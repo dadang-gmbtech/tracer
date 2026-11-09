@@ -99,7 +99,7 @@ class IkuCalculatorService
         return 0.6;
     }
 
-    protected function gajiMemenuhiUmp(mixed $gaji, ?UmpSalary $ump): bool
+    public function gajiMemenuhiUmp(mixed $gaji, ?UmpSalary $ump): bool
     {
         if ($gaji === null || $ump === null) {
             return false;

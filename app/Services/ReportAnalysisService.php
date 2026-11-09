@@ -5,20 +5,22 @@ namespace App\Services;
 use Illuminate\Support\Collection;
 
 /**
- * Writes the "Analisis" paragraph under each section of the auto-generated
- * tracer report: how the figure compares with the previous graduation year,
- * how it rates against the criteria below, and what to do about it.
+ * Writes the analysis in the auto-generated tracer report: an "Analisis"
+ * paragraph under each section (how the figure moved over recent years, how
+ * it rates against the criteria below, what to do about it), and an
+ * executive summary gathering the key figures, what went well, what needs
+ * attention, and the top recommendations.
  *
  * Rule-based on purpose — the same numbers always give the same wording, and
  * nothing leaves the server. The criteria are this system's own yardsticks,
- * not national targets; they're listed in the report so readers can judge.
+ * not national targets; they're printed in the report so readers can judge.
  */
 class ReportAnalysisService
 {
     /** Respon rate (%): at or above => rating. */
     public const RESPON = [80 => 'sangat baik', 60 => 'baik', 40 => 'cukup'];
 
-    /** Share of respondents who found work/business within 6 months (%). */
+    /** Share who found work/business within 6 months (%). */
     public const MASA_TUNGGU = [80 => 'sangat baik', 60 => 'baik', 40 => 'cukup'];
 
     /** Share rating their job "sangat relevan" or "relevan" to their study (%). */
@@ -39,59 +41,101 @@ class ReportAnalysisService
     /** A province holding more than this share counts as concentrated. */
     public const KONSENTRASI_WILAYAH = 50;
 
+    /** A competency whose need exceeds mastery by at least this much is a gap. */
+    public const KESENJANGAN_KOMPETENSI = 0.3;
+
+    /** Below this share earning above 1.2 x UMP (of those working), flag it. */
+    public const GAJI_UMP_RENDAH = 50;
+
+    /** @var list<string> */
+    private array $baik = [];
+
+    /** @var list<array{bobot: int, teks: string, rekomendasi: string}> */
+    private array $perhatian = [];
+
     /**
-     * @param  array<string, mixed>  $current  DashboardService aggregate for the year
-     * @param  array<string, mixed>|null  $previous  the same for the year before, if any
-     * @param  array<string, mixed>  $breakdown  DashboardService::reportBreakdown() for the year
-     * @param  array<string, mixed>|null  $previousBreakdown  the same for the year before
+     * @param  array<int, array{current: array<string, mixed>, breakdown: array<string, mixed>}>  $history
+     *                                                                                                      the report year and the years before it (oldest first), from DashboardService
      * @param  Collection<int, array<string, mixed>>  $facultyRows  DashboardService::facultyRecap() rows
      * @param  array<string, mixed>  $employer  EmployerDashboardService::summary()['total']
-     * @return array<string, list<string>> section key => sentences
+     * @return array{sections: array<string, list<string>>, ringkasan: array<string, list<string>>}
      */
-    public function analyze(
-        int $year,
-        array $current,
-        ?array $previous,
-        array $breakdown,
-        ?array $previousBreakdown,
-        Collection $facultyRows,
-        array $employer,
-    ): array {
-        $prevYear = $year - 1;
-        $hasPrevious = $previous !== null && ($previous['jumlah_alumni'] ?? 0) > 0;
-        $previousBreakdown = $hasPrevious ? $previousBreakdown : null;
+    public function analyze(int $year, array $history, Collection $facultyRows, array $employer): array
+    {
+        $this->baik = [];
+        $this->perhatian = [];
 
-        return array_filter([
-            'responden' => $this->responden($current, $hasPrevious ? $previous : null, $prevYear),
-            'status' => $this->status($breakdown['status_lulusan'], $previousBreakdown['status_lulusan'] ?? null, $prevYear),
+        // Only years that had graduates count as history to compare against.
+        $history = array_filter($history, fn ($h) => ($h['current']['jumlah_alumni'] ?? 0) > 0);
+        ksort($history);
+        if (! isset($history[$year])) {
+            return ['sections' => [], 'ringkasan' => []];
+        }
+        $current = $history[$year]['current'];
+        $breakdown = $history[$year]['breakdown'];
+
+        $sections = array_filter([
+            'responden' => $this->responden($current, $history),
+            'status' => $this->status($breakdown['status_lulusan'], $history),
             'fakultas' => $this->fakultas($facultyRows),
-            'masa_tunggu' => $this->masaTunggu($breakdown['masa_tunggu'], $previousBreakdown['masa_tunggu'] ?? null, $prevYear),
-            'pendapatan' => $this->pendapatan($breakdown, $previousBreakdown, $prevYear),
+            'masa_tunggu' => $this->masaTunggu($breakdown['masa_tunggu'], $history),
+            'pendapatan' => $this->pendapatan($breakdown, $history),
+            'iku' => $this->iku($current, $breakdown['iku'], $history),
             'tempat_kerja' => $this->tempatKerja(collect($breakdown['tempat_kerja'])),
-            'f14' => $this->relevansi($breakdown['f14'], $previousBreakdown['f14'] ?? null, $prevYear),
+            'f14' => $this->relevansi($breakdown['f14'], $history),
             'f15' => $this->kesesuaianJenjang($breakdown['f15']),
             'jenis_instansi' => $this->jenisInstansi($breakdown['jenis_instansi']),
             'ruang_lingkup' => $this->ruangLingkup($breakdown['ruang_lingkup']),
             'cara_mencari_kerja' => $this->caraMencariKerja($breakdown['cara_mencari_kerja']),
+            'kompetensi' => $this->kompetensi($breakdown['kompetensi']),
             'metode' => $this->metode($breakdown['metode_pembelajaran']),
-            'iku' => $this->iku($current, $hasPrevious ? $previous : null, $prevYear),
             'pengguna_alumni' => $this->penggunaAlumni($employer),
         ]);
+
+        return ['sections' => $sections, 'ringkasan' => $this->ringkasan($current, $breakdown)];
+    }
+
+    /** @return array<string, list<string>> */
+    private function ringkasan(array $current, array $breakdown): array
+    {
+        $status = $breakdown['status_lulusan'];
+        $statusTotal = array_sum($status);
+        $masaTunggu = $breakdown['masa_tunggu'];
+
+        $temuan = array_values(array_filter([
+            "{$this->n($current['responden'])} dari {$this->n($current['jumlah_alumni'])} lulusan mengisi kuesioner (respon {$this->pct($current['persentase_responden'])}).",
+            $statusTotal > 0
+                ? "{$this->pct(($status['bekerja'] + $status['wiraswasta'] + $status['studi_lanjut']) / $statusTotal * 100)} responden sudah bekerja, berwirausaha, atau melanjutkan studi."
+                : null,
+            array_sum($masaTunggu) > 0
+                ? "{$this->pct($masaTunggu['<=6 bulan'] / array_sum($masaTunggu) * 100)} mendapat pekerjaan/usaha dalam 6 bulan setelah lulus."
+                : null,
+            ($breakdown['rata_rata_pendapatan'] ?? 0) > 0
+                ? "Rata-rata pendapatan Rp {$this->n($breakdown['rata_rata_pendapatan'])} per bulan."
+                : null,
+            "IKU berdasar lulusan (D3/S1) {$this->pct($current['iku_berdasar_lulusan'])}.",
+        ]));
+
+        $perhatian = collect($this->perhatian)->sortByDesc('bobot')->values();
+
+        return [
+            'temuan' => $temuan,
+            'baik' => array_values(array_unique($this->baik)),
+            'perhatian' => $perhatian->pluck('teks')->unique()->values()->all(),
+            'rekomendasi' => $perhatian->pluck('rekomendasi')->filter()->unique()->take(5)->values()->all(),
+        ];
     }
 
     /** @return list<string> */
-    private function responden(array $current, ?array $previous, int $prevYear): array
+    private function responden(array $current, array $history): array
     {
-        if (($current['jumlah_alumni'] ?? 0) === 0) {
-            return [];
-        }
-
         $rate = (float) $current['persentase_responden'];
         $rating = $this->rate($rate, self::RESPON);
         $lines = ["Tingkat respon {$this->pct($rate)} tergolong {$rating}."];
+        $lines[] = $this->trend('Tingkat respon', $this->series($history, fn ($h) => $h['current']['persentase_responden']), 'pct');
 
-        if ($previous) {
-            $lines[] = $this->trend('Tingkat respon', $rate, (float) $previous['persentase_responden'], $prevYear);
+        if (in_array($rating, ['sangat baik', 'baik'], true)) {
+            $this->baik[] = "Tingkat respon {$this->pct($rate)} ({$rating}).";
         }
 
         $lines[] = match ($rating) {
@@ -101,11 +145,19 @@ class ReportAnalysisService
                 .'Disarankan pengingat berkala melalui WhatsApp/email dan melibatkan program studi untuk menghubungi alumninya.',
         };
 
-        return $lines;
+        if (! in_array($rating, ['sangat baik', 'baik'], true)) {
+            $this->perhatian[] = [
+                'bobot' => $rating === 'kurang' ? 100 : 80,
+                'teks' => "Tingkat respon baru {$this->pct($rate)}.",
+                'rekomendasi' => 'Naikkan tingkat respon lewat pengingat berkala dan pelibatan program studi; ini cara paling langsung menaikkan IKU.',
+            ];
+        }
+
+        return array_values(array_filter($lines));
     }
 
     /** @return list<string> */
-    private function status(array $status, ?array $previous, int $prevYear): array
+    private function status(array $status, array $history): array
     {
         $total = array_sum($status);
         if ($total === 0) {
@@ -113,27 +165,35 @@ class ReportAnalysisService
         }
 
         $terserap = $status['bekerja'] + $status['wiraswasta'] + $status['studi_lanjut'];
-        $terserapPct = $terserap / $total * 100;
         $belumPct = $status['belum_bekerja'] / $total * 100;
 
-        $lines = ["Sebanyak {$this->n($terserap)} responden ({$this->pct($terserapPct)}) sudah bekerja, berwirausaha, atau melanjutkan studi."];
+        $lines = [
+            "Sebanyak {$this->n($terserap)} responden ({$this->pct($terserap / $total * 100)}) sudah bekerja, berwirausaha, atau melanjutkan studi.",
+            $this->trend('Proporsi lulusan yang sudah beraktivitas', $this->series($history, function ($h) {
+                $s = $h['breakdown']['status_lulusan'];
+                $t = array_sum($s);
 
-        if ($previous && array_sum($previous) > 0) {
-            $prevPct = ($previous['bekerja'] + $previous['wiraswasta'] + $previous['studi_lanjut']) / array_sum($previous) * 100;
-            $lines[] = $this->trend('Proporsi lulusan yang sudah beraktivitas', $terserapPct, $prevPct, $prevYear);
-        }
+                return $t > 0 ? ($s['bekerja'] + $s['wiraswasta'] + $s['studi_lanjut']) / $t * 100 : null;
+            }), 'pct'),
+        ];
 
         if ($belumPct > self::BELUM_BEKERJA_TINGGI) {
             $lines[] = "Proporsi yang belum bekerja/masih mencari kerja cukup tinggi ({$this->pct($belumPct)}). "
                 .'Layanan karier seperti bursa kerja, informasi lowongan, dan pelatihan persiapan kerja perlu diperkuat.';
+            $this->perhatian[] = [
+                'bobot' => 55,
+                'teks' => "{$this->pct($belumPct)} responden belum bekerja atau masih mencari kerja.",
+                'rekomendasi' => 'Perkuat layanan karier: bursa kerja, informasi lowongan, dan pelatihan persiapan kerja.',
+            ];
         }
 
         $wiraPct = $status['wiraswasta'] / $total * 100;
         if ($wiraPct >= 10) {
             $lines[] = "Minat berwirausaha cukup menonjol ({$this->pct($wiraPct)}) dan layak didukung dengan program inkubasi bisnis.";
+            $this->baik[] = "Minat berwirausaha menonjol ({$this->pct($wiraPct)} responden).";
         }
 
-        return $lines;
+        return array_values(array_filter($lines));
     }
 
     /** @return list<string> */
@@ -143,9 +203,7 @@ class ReportAnalysisService
             return [];
         }
 
-        $max = $rows->max('persentase_responden');
-        $min = $rows->min('persentase_responden');
-        $gap = $max - $min;
+        $gap = $rows->max('persentase_responden') - $rows->min('persentase_responden');
         $low = $rows->filter(fn ($r) => $r['persentase_responden'] < self::FAKULTAS_RENDAH)->sortBy('persentase_responden');
 
         $lines = ["Selisih partisipasi antara fakultas tertinggi dan terendah {$this->num($gap)} poin persentase."
@@ -155,13 +213,18 @@ class ReportAnalysisService
             $names = $low->map(fn ($r) => $r['faculty'].' ('.$this->pct($r['persentase_responden']).')')->join(', ');
             $lines[] = 'Fakultas dengan partisipasi di bawah '.self::FAKULTAS_RENDAH."%: {$names}. "
                 .'Fakultas tersebut perlu pendampingan khusus untuk menjangkau alumninya.';
+            $this->perhatian[] = [
+                'bobot' => 60,
+                'teks' => "{$low->count()} fakultas dengan partisipasi di bawah ".self::FAKULTAS_RENDAH."%: {$low->pluck('faculty')->join(', ')}.",
+                'rekomendasi' => "Dampingi fakultas dengan partisipasi rendah ({$low->pluck('faculty')->join(', ')}) untuk menjangkau alumninya.",
+            ];
         }
 
         return $lines;
     }
 
     /** @return list<string> */
-    private function masaTunggu(array $masaTunggu, ?array $previous, int $prevYear): array
+    private function masaTunggu(array $masaTunggu, array $history): array
     {
         $total = array_sum($masaTunggu);
         if ($total === 0) {
@@ -170,25 +233,35 @@ class ReportAnalysisService
 
         $cepat = $masaTunggu['<=6 bulan'] / $total * 100;
         $rating = $this->rate($cepat, self::MASA_TUNGGU);
-        $lines = ["Lulusan yang mendapat pekerjaan/usaha dalam 6 bulan sebesar {$this->pct($cepat)}, tergolong {$rating}."];
+        $lines = [
+            "Lulusan yang mendapat pekerjaan/usaha dalam 6 bulan sebesar {$this->pct($cepat)}, tergolong {$rating}.",
+            $this->trend('Proporsi masa tunggu ≤6 bulan', $this->series($history, function ($h) {
+                $m = $h['breakdown']['masa_tunggu'];
 
-        if ($previous && array_sum($previous) > 0) {
-            $lines[] = $this->trend('Proporsi masa tunggu ≤6 bulan', $cepat, $previous['<=6 bulan'] / array_sum($previous) * 100, $prevYear);
-        }
+                return array_sum($m) > 0 ? $m['<=6 bulan'] / array_sum($m) * 100 : null;
+            }), 'pct'),
+        ];
 
         if ($masaTunggu['>12 bulan'] > 0) {
             $lines[] = "{$this->n($masaTunggu['>12 bulan'])} lulusan membutuhkan lebih dari 12 bulan; lulusan ini tidak dihitung dalam IKU.";
         }
 
-        if (in_array($rating, ['cukup', 'kurang'], true)) {
+        if (in_array($rating, ['sangat baik', 'baik'], true)) {
+            $this->baik[] = "Masa tunggu ≤6 bulan {$this->pct($cepat)} ({$rating}).";
+        } else {
             $lines[] = 'Disarankan memperkuat magang, kerja sama dengan industri, dan penyaluran kerja sebelum wisuda.';
+            $this->perhatian[] = [
+                'bobot' => 50,
+                'teks' => "Baru {$this->pct($cepat)} lulusan mendapat pekerjaan dalam 6 bulan.",
+                'rekomendasi' => 'Perkuat magang, kerja sama industri, dan penyaluran kerja sebelum wisuda untuk memperpendek masa tunggu.',
+            ];
         }
 
-        return $lines;
+        return array_values(array_filter($lines));
     }
 
     /** @return list<string> */
-    private function pendapatan(array $breakdown, ?array $previous, int $prevYear): array
+    private function pendapatan(array $breakdown, array $history): array
     {
         $buckets = $breakdown['pendapatan'];
         $total = array_sum($buckets);
@@ -197,25 +270,91 @@ class ReportAnalysisService
         }
 
         $avg = (float) $breakdown['rata_rata_pendapatan'];
-        $lines = ["Rata-rata pendapatan lulusan Rp {$this->n($avg)} per bulan."];
-
-        $prevAvg = (float) ($previous['rata_rata_pendapatan'] ?? 0);
-        if ($prevAvg > 0) {
-            $change = ($avg - $prevAvg) / $prevAvg * 100;
-            $lines[] = abs($change) < 1
-                ? "Relatif sama dengan {$prevYear} (Rp {$this->n($prevAvg)})."
-                : ($change > 0 ? 'Naik' : 'Turun')." {$this->pct(abs($change))} dibanding {$prevYear} (Rp {$this->n($prevAvg)}).";
-        }
-
         $atas5 = ($buckets['5-10 juta'] + $buckets['>10 juta']) / $total * 100;
         $bawah3 = $buckets['<3 juta'] / $total * 100;
-        $lines[] = "{$this->pct($atas5)} berpendapatan di atas 5 juta, sedangkan {$this->pct($bawah3)} di bawah 3 juta.";
+
+        $lines = [
+            "Rata-rata pendapatan lulusan Rp {$this->n($avg)} per bulan.",
+            $this->trend('Rata-rata pendapatan', $this->series($history, fn ($h) => ($h['breakdown']['rata_rata_pendapatan'] ?? 0) ?: null), 'rp'),
+            "{$this->pct($atas5)} berpendapatan di atas 5 juta, sedangkan {$this->pct($bawah3)} di bawah 3 juta.",
+        ];
 
         if ($bawah3 > 30) {
             $lines[] = 'Porsi pendapatan di bawah 3 juta cukup besar; perlu dicek apakah sejalan dengan UMP provinsi tempat kerja.';
         }
 
-        return $lines;
+        return array_values(array_filter($lines));
+    }
+
+    /** @return list<string> */
+    private function iku(array $current, array $iku, array $history): array
+    {
+        $lines = [
+            "IKU berdasar lulusan {$this->pct($current['iku_berdasar_lulusan'])}, dari total bobot {$this->num($iku['bobot_total'], 2)} "
+            ."atas {$this->n($iku['lulusan'])} lulusan D3/S1.",
+            $this->trend('IKU berdasar lulusan', $this->series($history, fn ($h) => $h['current']['iku_berdasar_lulusan']), 'pct'),
+        ];
+
+        if ($iku['lulusan'] === 0) {
+            return array_values(array_filter($lines));
+        }
+
+        $komponen = $iku['komponen'];
+        $kontribusi = collect(['bekerja' => 'bekerja', 'wiraswasta' => 'wiraswasta', 'studi_lanjut' => 'studi lanjut'])
+            ->filter(fn ($label, $key) => $komponen[$key]['jumlah'] > 0)
+            ->map(fn ($label, $key) => "{$label} {$this->num($komponen[$key]['bobot'], 2)} ({$this->n($komponen[$key]['jumlah'])} orang)")
+            ->join(', ');
+        if ($kontribusi !== '') {
+            $lines[] = "Bobot terbesar berasal dari: {$kontribusi}.";
+        }
+
+        // What holds the score down, largest first.
+        $tidakMengisiPct = $iku['tidak_mengisi'] / $iku['lulusan'] * 100;
+        $penekan = [];
+        if ($iku['tidak_mengisi'] > 0) {
+            $penekan[] = "{$this->n($iku['tidak_mengisi'])} lulusan ({$this->pct($tidakMengisiPct)}) belum mengisi sehingga bernilai 0";
+        }
+        if ($iku['masa_tunggu_tidak_dihitung'] > 0) {
+            $penekan[] = "{$this->n($iku['masa_tunggu_tidak_dihitung'])} yang bekerja/berwirausaha bermasa tunggu ≥12 bulan atau tidak mengisinya sehingga bernilai 0";
+        }
+        if ($penekan) {
+            $lines[] = 'Faktor yang menekan IKU: '.implode('; ', $penekan).'.';
+        }
+
+        if ($iku['bekerja_wiraswasta'] > 0) {
+            $denganUmp = $iku['bekerja_wiraswasta'] - $iku['tanpa_data_ump'];
+            $atasUmp = $denganUmp > 0 ? $iku['gaji_di_atas_ump'] / $denganUmp * 100 : 0;
+            $lines[] = "{$this->pct($atasUmp)} lulusan yang bekerja/berwirausaha bergaji di atas 1,2 × UMP provinsinya; "
+                .'yang di bawahnya mendapat bobot lebih rendah.';
+
+            if ($iku['tanpa_data_ump'] > 0) {
+                $lines[] = "{$this->n($iku['tanpa_data_ump'])} lulusan bekerja di provinsi yang belum punya data UMP tahun ini, "
+                    .'sehingga gajinya dianggap di bawah 1,2 × UMP. Lengkapi data UMP agar IKU terhitung akurat.';
+                $this->perhatian[] = [
+                    'bobot' => 65,
+                    'teks' => "{$this->n($iku['tanpa_data_ump'])} lulusan bekerja di provinsi tanpa data UMP, sehingga IKU-nya terhitung lebih rendah.",
+                    'rekomendasi' => 'Lengkapi data UMP per provinsi untuk tahun ini di menu Master Data agar IKU terhitung akurat.',
+                ];
+            }
+
+            if ($denganUmp > 0 && $atasUmp < self::GAJI_UMP_RENDAH) {
+                $this->perhatian[] = [
+                    'bobot' => 40,
+                    'teks' => "Hanya {$this->pct($atasUmp)} lulusan yang bekerja bergaji di atas 1,2 × UMP.",
+                    'rekomendasi' => 'Dorong lulusan ke sektor dan jabatan dengan pendapatan lebih baik melalui pembekalan karier dan jejaring alumni.',
+                ];
+            }
+        }
+
+        if ($tidakMengisiPct > 40) {
+            $this->perhatian[] = [
+                'bobot' => 90,
+                'teks' => "{$this->pct($tidakMengisiPct)} lulusan D3/S1 belum mengisi kuesioner dan bernilai 0 dalam IKU.",
+                'rekomendasi' => 'Naikkan tingkat respon lewat pengingat berkala dan pelibatan program studi; ini cara paling langsung menaikkan IKU.',
+            ];
+        }
+
+        return array_values(array_filter($lines));
     }
 
     /** @return list<string> */
@@ -230,18 +369,16 @@ class ReportAnalysisService
         $topPct = $top['jumlah'] / $total * 100;
         $luarNegeri = (int) ($rows->firstWhere('is_luar_negeri', true)['jumlah'] ?? 0);
 
-        $lines = [$topPct > self::KONSENTRASI_WILAYAH
-            ? "Lulusan terkonsentrasi di {$top['name']} ({$this->pct($topPct)})."
-            : "Sebaran lulusan cukup merata; {$top['name']} sebagai provinsi terbanyak menampung {$this->pct($topPct)}."];
-
-        $lines[] = "Lulusan bekerja di {$rows->count()} provinsi/wilayah"
-            .($luarNegeri > 0 ? ", termasuk {$this->n($luarNegeri)} orang di luar negeri." : '.');
-
-        return $lines;
+        return [
+            $topPct > self::KONSENTRASI_WILAYAH
+                ? "Lulusan terkonsentrasi di {$top['name']} ({$this->pct($topPct)})."
+                : "Sebaran lulusan cukup merata; {$top['name']} sebagai provinsi terbanyak menampung {$this->pct($topPct)}.",
+            "Lulusan bekerja di {$rows->count()} provinsi/wilayah".($luarNegeri > 0 ? ", termasuk {$this->n($luarNegeri)} orang di luar negeri." : '.'),
+        ];
     }
 
     /** @return list<string> */
-    private function relevansi(array $f14, ?array $previous, int $prevYear): array
+    private function relevansi(array $f14, array $history): array
     {
         $total = array_sum($f14);
         if ($total === 0) {
@@ -250,17 +387,27 @@ class ReportAnalysisService
 
         $relevan = ($f14['Sangat relevan'] + $f14['Relevan']) / $total * 100;
         $rating = $this->rate($relevan, self::RELEVANSI);
-        $lines = ["{$this->pct($relevan)} lulusan menilai pekerjaannya relevan atau sangat relevan dengan bidang studi, tergolong {$rating}."];
+        $lines = [
+            "{$this->pct($relevan)} lulusan menilai pekerjaannya relevan atau sangat relevan dengan bidang studi, tergolong {$rating}.",
+            $this->trend('Tingkat relevansi', $this->series($history, function ($h) {
+                $f = $h['breakdown']['f14'];
 
-        if ($previous && array_sum($previous) > 0) {
-            $lines[] = $this->trend('Tingkat relevansi', $relevan, ($previous['Sangat relevan'] + $previous['Relevan']) / array_sum($previous) * 100, $prevYear);
-        }
+                return array_sum($f) > 0 ? ($f['Sangat relevan'] + $f['Relevan']) / array_sum($f) * 100 : null;
+            }), 'pct'),
+        ];
 
-        if ($rating !== 'baik') {
+        if ($rating === 'baik') {
+            $this->baik[] = "{$this->pct($relevan)} lulusan menilai pekerjaannya relevan dengan bidang studi.";
+        } else {
             $lines[] = 'Kurikulum perlu ditinjau bersama pengguna lulusan agar lebih sesuai dengan kebutuhan dunia kerja.';
+            $this->perhatian[] = [
+                'bobot' => 45,
+                'teks' => "Relevansi pekerjaan dengan bidang studi baru {$this->pct($relevan)}.",
+                'rekomendasi' => 'Tinjau kurikulum bersama pengguna lulusan agar lebih sesuai dengan kebutuhan dunia kerja.',
+            ];
         }
 
-        return $lines;
+        return array_values(array_filter($lines));
     }
 
     /** @return list<string> */
@@ -276,9 +423,16 @@ class ReportAnalysisService
 
         $lines = ["{$this->pct($sesuai)} lulusan bekerja pada posisi yang setara atau lebih tinggi dari jenjang pendidikannya."];
 
-        $lines[] = $dibawah > self::UNDEREMPLOYMENT_TINGGI
-            ? "Sebanyak {$this->pct($dibawah)} bekerja di bawah jenjang pendidikannya (underemployment), perlu menjadi perhatian."
-            : "Hanya {$this->pct($dibawah)} yang bekerja di bawah jenjang pendidikannya.";
+        if ($dibawah > self::UNDEREMPLOYMENT_TINGGI) {
+            $lines[] = "Sebanyak {$this->pct($dibawah)} bekerja di bawah jenjang pendidikannya (underemployment), perlu menjadi perhatian.";
+            $this->perhatian[] = [
+                'bobot' => 40,
+                'teks' => "{$this->pct($dibawah)} lulusan bekerja di bawah jenjang pendidikannya.",
+                'rekomendasi' => null,
+            ];
+        } else {
+            $lines[] = "Hanya {$this->pct($dibawah)} yang bekerja di bawah jenjang pendidikannya.";
+        }
 
         return $lines;
     }
@@ -331,9 +485,51 @@ class ReportAnalysisService
 
         $lines = ["Saluran paling banyak dipakai adalah {$this->lower($top)} ({$this->pct($items[$top]['persen'])})."];
 
-        $lines[] = $kampus < self::KANAL_KAMPUS_RENDAH
-            ? "Peran kampus sebagai saluran informasi kerja masih kecil ({$this->pct($kampus)}); pusat karier perlu lebih aktif membagikan lowongan dan menjalin kerja sama dengan perusahaan."
-            : "Kampus berperan sebagai saluran informasi kerja bagi {$this->pct($kampus)} lulusan.";
+        if ($kampus < self::KANAL_KAMPUS_RENDAH) {
+            $lines[] = "Peran kampus sebagai saluran informasi kerja masih kecil ({$this->pct($kampus)}); pusat karier perlu lebih aktif membagikan lowongan dan menjalin kerja sama dengan perusahaan.";
+            $this->perhatian[] = [
+                'bobot' => 35,
+                'teks' => "Hanya {$this->pct($kampus)} lulusan mendapat informasi kerja dari kampus.",
+                'rekomendasi' => 'Aktifkan pusat karier: bagikan lowongan, jalin kerja sama perusahaan, dan manfaatkan jejaring alumni.',
+            ];
+        } else {
+            $lines[] = "Kampus berperan sebagai saluran informasi kerja bagi {$this->pct($kampus)} lulusan.";
+        }
+
+        return $lines;
+    }
+
+    /** @return list<string> */
+    private function kompetensi(array $kompetensi): array
+    {
+        $rows = collect($kompetensi);
+        if ($rows->isEmpty()) {
+            return [];
+        }
+
+        $kurang = $rows->filter(fn ($k) => $k['selisih'] >= self::KESENJANGAN_KOMPETENSI)->sortByDesc('selisih');
+        $lebih = $rows->filter(fn ($k) => $k['selisih'] <= -self::KESENJANGAN_KOMPETENSI)->sortBy('selisih');
+        $terkuat = $rows->sortByDesc('saat_lulus')->first();
+
+        $lines = ["Kompetensi yang paling dikuasai lulusan saat lulus adalah {$this->lower($terkuat['label'])} (rata-rata {$this->num($terkuat['saat_lulus'], 2)} dari 5)."];
+
+        if ($kurang->isNotEmpty()) {
+            $daftar = $kurang->map(fn ($k) => "{$this->lower($k['label'])} (+{$this->num($k['selisih'], 2)})")->join(', ');
+            $lines[] = "Kompetensi yang lebih dibutuhkan pekerjaan daripada yang dikuasai saat lulus: {$daftar}. Ini menjadi prioritas penguatan pembelajaran.";
+            $this->perhatian[] = [
+                'bobot' => 30,
+                'teks' => "Kesenjangan kompetensi terbesar: {$this->lower($kurang->first()['label'])}.",
+                'rekomendasi' => "Perkuat {$kurang->take(3)->pluck('label')->map(fn ($l) => $this->lower($l))->join(', ')} dalam pembelajaran karena paling dibutuhkan pekerjaan dibanding yang dikuasai saat lulus.",
+            ];
+        } else {
+            $lines[] = 'Tidak ada kesenjangan berarti antara kompetensi yang dikuasai saat lulus dan yang dibutuhkan pekerjaan.';
+            $this->baik[] = 'Kompetensi lulusan saat lulus sudah sejalan dengan yang dibutuhkan pekerjaan.';
+        }
+
+        if ($lebih->isNotEmpty()) {
+            $lines[] = 'Kompetensi yang dikuasai melebihi kebutuhan pekerjaan: '
+                .$lebih->map(fn ($k) => $this->lower($k['label']))->join(', ').'.';
+        }
 
         return $lines;
     }
@@ -357,24 +553,6 @@ class ReportAnalysisService
     }
 
     /** @return list<string> */
-    private function iku(array $current, ?array $previous, int $prevYear): array
-    {
-        $iku = (float) $current['iku_berdasar_lulusan'];
-        $lines = ["IKU berdasar lulusan tahun ini {$this->pct($iku)}."];
-
-        if ($previous) {
-            $lines[] = $this->trend('IKU berdasar lulusan', $iku, (float) $previous['iku_berdasar_lulusan'], $prevYear);
-        }
-
-        if ((float) $current['persentase_responden'] < 60) {
-            $lines[] = 'Karena IKU dihitung terhadap seluruh lulusan, tingkat respon yang rendah ikut menekan nilai IKU; '
-                .'menaikkan respon adalah cara paling langsung untuk meningkatkannya.';
-        }
-
-        return $lines;
-    }
-
-    /** @return list<string> */
     private function penggunaAlumni(array $employer): array
     {
         if (($employer['jumlah_respon'] ?? 0) === 0) {
@@ -389,6 +567,13 @@ class ReportAnalysisService
         $lowest = $questions->first();
         $highest = $questions->last();
 
+        $this->baik[] = "Pengguna lulusan paling menghargai {$this->lower($highest['label'])} ({$this->pct($highest['indeks'])}).";
+        $this->perhatian[] = [
+            'bobot' => 25,
+            'teks' => "Kompetensi dengan penilaian pengguna lulusan terendah: {$this->lower($lowest['label'])} ({$this->pct($lowest['indeks'])}).",
+            'rekomendasi' => "Jadikan {$this->lower($lowest['label'])} prioritas pengembangan, karena paling rendah dinilai pengguna lulusan.",
+        ];
+
         return [
             "Kompetensi yang paling dihargai pengguna lulusan adalah {$this->lower($highest['label'])} ({$this->pct($highest['indeks'])}), "
             ."sedangkan yang terendah {$this->lower($lowest['label'])} ({$this->pct($lowest['indeks'])}).",
@@ -396,15 +581,81 @@ class ReportAnalysisService
         ];
     }
 
-    private function trend(string $what, float $now, float $before, int $prevYear): string
+    /**
+     * @param  array<int, array<string, mixed>>  $history
+     * @return array<int, float> year => value, for years where it could be computed
+     */
+    private function series(array $history, callable $value): array
     {
-        $delta = $now - $before;
-
-        if (abs($delta) < 1) {
-            return "{$what} relatif sama dengan {$prevYear} ({$this->pct($before)}).";
+        $series = [];
+        foreach ($history as $year => $h) {
+            $v = $value($h);
+            if ($v !== null) {
+                $series[$year] = (float) $v;
+            }
         }
 
-        return "{$what} ".($delta > 0 ? 'naik' : 'turun')." {$this->num(abs($delta))} poin dibanding {$prevYear} ({$this->pct($before)}).";
+        return $series;
+    }
+
+    /**
+     * One sentence on where a figure has been heading: a streak of rises or
+     * falls into the latest year, otherwise its range — or, with just two
+     * years, the change from the year before.
+     *
+     * @param  array<int, float>  $series  year => value, oldest first, ending with the report year
+     */
+    private function trend(string $what, array $series, string $unit): ?string
+    {
+        if (count($series) < 2) {
+            return null;
+        }
+
+        $fmt = fn (float $v) => $unit === 'rp' ? 'Rp '.$this->n($v) : $this->pct($v);
+        $years = array_keys($series);
+        $values = array_values($series);
+        $last = count($values) - 1;
+        $now = $values[$last];
+        $before = $values[$last - 1];
+        $prevYear = $years[$last - 1];
+
+        // Change from the year before; percentages in points, money in percent.
+        $delta = $unit === 'rp' ? ($before > 0 ? ($now - $before) / $before * 100 : 0) : $now - $before;
+        $flat = abs($delta) < 1;
+        $change = $flat
+            ? "relatif sama dengan {$prevYear} ({$fmt($before)})"
+            : ($delta > 0 ? 'naik ' : 'turun ').($unit === 'rp' ? $this->pct(abs($delta)) : $this->num(abs($delta)).' poin')
+                ." dibanding {$prevYear} ({$fmt($before)})";
+
+        if (count($series) === 2) {
+            return "{$what} {$change}.";
+        }
+
+        // Length of the run of same-direction moves ending at the report year.
+        $streak = 0;
+        $direction = 0;
+        for ($i = $last; $i > 0; $i--) {
+            $step = $values[$i] - $values[$i - 1];
+            $sign = abs($step) < ($unit === 'rp' ? $values[$i - 1] * 0.01 : 0.5) ? 0 : ($step > 0 ? 1 : -1);
+            if ($sign === 0 || ($direction !== 0 && $sign !== $direction)) {
+                break;
+            }
+            $direction = $sign;
+            $streak++;
+        }
+
+        if ($streak >= 2) {
+            $from = $last - $streak;
+
+            return "{$what} {$change}, dan ".($direction > 0 ? 'naik' : 'turun')." {$streak} tahun berturut-turut "
+                ."dari {$fmt($values[$from])} ({$years[$from]}).";
+        }
+
+        $min = array_search(min($values), $values, true);
+        $max = array_search(max($values), $values, true);
+
+        return "{$what} {$change}. Dalam ".count($series)." tahun terakhir angkanya berkisar antara {$fmt($values[$min])} ({$years[$min]}) "
+            ."dan {$fmt($values[$max])} ({$years[$max]}).";
     }
 
     /** @param  array<int, string>  $scale */

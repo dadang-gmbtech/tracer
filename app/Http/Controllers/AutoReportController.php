@@ -57,20 +57,22 @@ class AutoReportController extends Controller
         $trendYears = array_slice($summary['years'], -6);
 
         $current = $summary['data'][$year] ?? null;
-        $previous = $summary['data'][$year - 1] ?? null;
         $facultyRecap = $dashboard->facultyRecap($user, $year, $filters);
         $breakdown = $dashboard->reportBreakdown($user, $year, $filters);
         $employerSummary = $employerDashboard->summary($user, $filters);
 
-        $analysis = $current ? $analyzer->analyze(
-            $year,
-            $current,
-            $previous,
-            $breakdown,
-            $previous ? $dashboard->reportBreakdown($user, $year - 1, $filters) : null,
-            $facultyRecap['rows'],
-            $employerSummary['total'],
-        ) : [];
+        // The report year plus up to four years before it, for trend analysis.
+        $history = [];
+        foreach (array_slice(array_filter($summary['years'], fn ($y) => $y <= $year), -5) as $y) {
+            $history[$y] = [
+                'current' => $summary['data'][$y],
+                'breakdown' => $y === $year ? $breakdown : $dashboard->reportBreakdown($user, $y, $filters),
+            ];
+        }
+
+        $analysis = $current
+            ? $analyzer->analyze($year, $history, $facultyRecap['rows'], $employerSummary['total'])
+            : ['sections' => [], 'ringkasan' => []];
 
         $pdf = Pdf::loadView('reports.tracer-pdf', [
             'year' => $year,
