@@ -28,6 +28,8 @@
         .bar-chart .bar-track { background: #f0f1f3; height: 12px; }
         .bar-chart .bar-fill { height: 12px; background: #1d4ed8; }
         .bar-chart .bar-value { font-size: 9px; color: #555; }
+        .analysis { margin: 6px 0 4px; padding: 6px 9px; background: #eff6ff; border-left: 3px solid #1d4ed8; text-align: justify; }
+        .analysis-title { font-weight: bold; color: #1d4ed8; font-size: 10px; margin-bottom: 2px; }
     </style>
 </head>
 <body>
@@ -97,6 +99,7 @@
             kuesioner Tracer Study, sedangkan {{ $n($tidakMengisi) }} orang
             ({{ $p($tidakMengisi, $current['jumlah_alumni']) }}) belum mengisi.
         </p>
+        @include('reports.partials.analysis', ['lines' => $analysis['responden'] ?? []])
 
         {{-- Status Lulusan --}}
         <h2>{{ ++$section }}. Status Lulusan Tahun {{ $year }}</h2>
@@ -147,6 +150,7 @@
                 "{{ $statusLabels[array_search(max($status), $status)] }}" sebanyak {{ $n(max($status)) }} orang
                 ({{ $p(max($status), $statusTotal) }}).
             </p>
+            @include('reports.partials.analysis', ['lines' => $analysis['status'] ?? []])
         @else
             <p class="muted">Belum ada responden dengan status terisi untuk tahun lulus ini.</p>
         @endif
@@ -190,6 +194,7 @@
                 {{ $bottomFaculty['faculty'] }} dengan {{ $pct($bottomFaculty['persentase_responden']) }}
                 ({{ $n($bottomFaculty['responden']) }} dari {{ $n($bottomFaculty['jumlah_alumni']) }} lulusan).
             </p>
+            @include('reports.partials.analysis', ['lines' => $analysis['fakultas'] ?? []])
         @endif
 
         {{-- Masa Tunggu --}}
@@ -214,6 +219,7 @@
                 mendapatkan pekerjaan/usaha pertama dalam waktu kurang dari 6 bulan sejak kelulusan. Catatan: masa
                 tunggu hanya dikumpulkan dari responden berstatus bekerja atau wiraswasta.
             </p>
+            @include('reports.partials.analysis', ['lines' => $analysis['masa_tunggu'] ?? []])
         @else
             <p class="muted">Belum ada data masa tunggu untuk tahun lulus ini.</p>
         @endif
@@ -242,6 +248,7 @@
                 Kelompok terbanyak berpendapatan {{ $pendapatanTop }} per bulan, yaitu {{ $n($pendapatan[$pendapatanTop]) }} orang
                 ({{ $p($pendapatan[$pendapatanTop], $pendapatanTotal) }}).
             </p>
+            @include('reports.partials.analysis', ['lines' => $analysis['pendapatan'] ?? []])
         @else
             <p class="muted">Belum ada data pendapatan untuk tahun lulus ini.</p>
         @endif
@@ -295,6 +302,7 @@
                     Tabel di atas merinci 10 provinsi teratas dari total {{ $tempatKerja->count() }} provinsi/wilayah.
                 @endif
             </p>
+            @include('reports.partials.analysis', ['lines' => $analysis['tempat_kerja'] ?? []])
         @else
             <p class="muted">Belum ada data lokasi tempat kerja untuk tahun lulus ini.</p>
         @endif
@@ -320,6 +328,7 @@
                 Dari {{ $n($f14Total) }} responden yang mengisi, {{ $n($f14[$f14Top]) }} orang ({{ $p($f14[$f14Top], $f14Total) }})
                 menilai pekerjaannya "{{ strtolower($f14Top) }}" dengan bidang studinya.
             </p>
+            @include('reports.partials.analysis', ['lines' => $analysis['f14'] ?? []])
         @else
             <p class="muted">Belum ada data relevansi bidang studi untuk tahun lulus ini.</p>
         @endif
@@ -345,6 +354,7 @@
                 Dari {{ $n($f15Total) }} responden yang mengisi, {{ $n($f15[$f15Top]) }} orang ({{ $p($f15[$f15Top], $f15Total) }})
                 bekerja pada "{{ strtolower($f15Top) }}" dengan jenjang pendidikannya.
             </p>
+            @include('reports.partials.analysis', ['lines' => $analysis['f15'] ?? []])
         @else
             <p class="muted">Belum ada data kesesuaian jenjang pendidikan untuk tahun lulus ini.</p>
         @endif
@@ -370,6 +380,7 @@
                 Dari {{ $n($jenisInstansiTotal) }} responden bekerja yang mengisi, {{ $n($jenisInstansi[$jenisInstansiTop]) }} orang
                 ({{ $p($jenisInstansi[$jenisInstansiTop], $jenisInstansiTotal) }}) bekerja di {{ strtolower($jenisInstansiTop) }}.
             </p>
+            @include('reports.partials.analysis', ['lines' => $analysis['jenis_instansi'] ?? []])
         @else
             <p class="muted">Belum ada data jenis perusahaan/instansi untuk tahun lulus ini.</p>
         @endif
@@ -395,6 +406,7 @@
                 Dari {{ $n($ruangLingkupTotal) }} responden yang mengisi, {{ $n($ruangLingkup[$ruangLingkupTop]) }} orang
                 ({{ $p($ruangLingkup[$ruangLingkupTop], $ruangLingkupTotal) }}) bekerja di lingkup {{ strtolower($ruangLingkupTop) }}.
             </p>
+            @include('reports.partials.analysis', ['lines' => $analysis['ruang_lingkup'] ?? []])
         @else
             <p class="muted">Belum ada data ruang lingkup tempat bekerja untuk tahun lulus ini.</p>
         @endif
@@ -420,6 +432,7 @@
                 dipilih oleh {{ $n($caraMencariKerja['items'][$caraTop]['jumlah']) }} orang
                 ({{ $pct($caraMencariKerja['items'][$caraTop]['persen']) }}).
             </p>
+            @include('reports.partials.analysis', ['lines' => $analysis['cara_mencari_kerja'] ?? []])
         @else
             <p class="muted">Belum ada data cara mencari pekerjaan untuk tahun lulus ini.</p>
         @endif
@@ -444,6 +457,7 @@
                 "{{ $metodeTop['label'] }}" dinilai paling ditekankan di program studi (rata-rata
                 {{ number_format($metodeTop['rata_rata'], 2, ',', '.') }} dari skala 1&ndash;5, {{ $n($metodeTop['n']) }} responden).
             </p>
+            @include('reports.partials.analysis', ['lines' => $analysis['metode'] ?? []])
         @endif
     @endif
 
@@ -473,6 +487,7 @@
             @endforeach
         </tbody>
     </table>
+    @include('reports.partials.analysis', ['lines' => $analysis['iku'] ?? []])
 
     <h2>Hasil Kuesioner Pengguna Alumni</h2>
     @if ($employerSummary['total']['jumlah_respon'] > 0)
@@ -507,8 +522,20 @@
         <p class="muted" style="margin-top: 4px; font-size: 9px;">
             Setiap sel: jumlah penilai (persentase dari penilai kompetensi tersebut). Indeks 100% berarti semua menilai Sangat Baik.
         </p>
+        @include('reports.partials.analysis', ['lines' => $analysis['pengguna_alumni'] ?? []])
     @else
         <p class="muted">Belum ada data kuesioner Pengguna Alumni untuk cakupan ini.</p>
+    @endif
+
+    @if (! empty($analysis))
+        @php $A = \App\Services\ReportAnalysisService::class @endphp
+        <p class="muted" style="margin-top: 18px; font-size: 9px;">
+            Keterangan analisis: dibuat otomatis dari angka laporan dengan kriteria internal sistem, bukan target nasional.
+            Tingkat respon dan masa tunggu &le;6 bulan: sangat baik &ge;{{ array_keys($A::RESPON)[0] }}%, baik &ge;{{ array_keys($A::RESPON)[1] }}%,
+            cukup &ge;{{ array_keys($A::RESPON)[2] }}%, di bawahnya kurang. Relevansi bidang studi: baik &ge;{{ array_keys($A::RELEVANSI)[0] }}%,
+            cukup &ge;{{ array_keys($A::RELEVANSI)[1] }}%. Fakultas ditandai bila partisipasinya di bawah {{ $A::FAKULTAS_RENDAH }}%.
+            Perbandingan &ldquo;naik/turun&rdquo; terhadap tahun lulus sebelumnya dengan cakupan dan filter yang sama.
+        </p>
     @endif
 
     <div class="footer">

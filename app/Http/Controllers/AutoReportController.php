@@ -7,6 +7,7 @@ use App\Models\StudyProgram;
 use App\Models\User;
 use App\Services\DashboardService;
 use App\Services\EmployerDashboardService;
+use App\Services\ReportAnalysisService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -35,8 +36,12 @@ class AutoReportController extends Controller
         ]);
     }
 
-    public function download(Request $request, DashboardService $dashboard, EmployerDashboardService $employerDashboard): Response
-    {
+    public function download(
+        Request $request,
+        DashboardService $dashboard,
+        EmployerDashboardService $employerDashboard,
+        ReportAnalysisService $analyzer,
+    ): Response {
         Gate::authorize('export-data');
 
         $user = $request->user();
@@ -51,15 +56,32 @@ class AutoReportController extends Controller
         $summary = $dashboard->summary($user, $filters);
         $trendYears = array_slice($summary['years'], -6);
 
+        $current = $summary['data'][$year] ?? null;
+        $previous = $summary['data'][$year - 1] ?? null;
+        $facultyRecap = $dashboard->facultyRecap($user, $year, $filters);
+        $breakdown = $dashboard->reportBreakdown($user, $year, $filters);
+        $employerSummary = $employerDashboard->summary($user, $filters);
+
+        $analysis = $current ? $analyzer->analyze(
+            $year,
+            $current,
+            $previous,
+            $breakdown,
+            $previous ? $dashboard->reportBreakdown($user, $year - 1, $filters) : null,
+            $facultyRecap['rows'],
+            $employerSummary['total'],
+        ) : [];
+
         $pdf = Pdf::loadView('reports.tracer-pdf', [
             'year' => $year,
             'scopeLabel' => $this->scopeLabel($user, $filters),
-            'current' => $summary['data'][$year] ?? null,
+            'current' => $current,
             'summary' => $summary,
             'trendYears' => $trendYears,
-            'facultyRecap' => $dashboard->facultyRecap($user, $year, $filters),
-            'breakdown' => $dashboard->reportBreakdown($user, $year, $filters),
-            'employerSummary' => $employerDashboard->summary($user, $filters),
+            'facultyRecap' => $facultyRecap,
+            'breakdown' => $breakdown,
+            'analysis' => $analysis,
+            'employerSummary' => $employerSummary,
             'generatedBy' => $user->name,
             'generatedAt' => now(),
         ])->setPaper('a4');
