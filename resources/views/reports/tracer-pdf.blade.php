@@ -37,6 +37,14 @@
         <div class="subtitle">Tahun Lulus {{ $year }}</div>
     </div>
 
+    @php
+        // Every figure is shown as a count and as a share: $n(1234) -> "1.234",
+        // $p(30, 120) -> "25,0%", $pct(25) -> "25,0%".
+        $n = fn ($value) => number_format((float) $value, 0, ',', '.');
+        $pct = fn ($percent) => number_format((float) $percent, 1, ',', '.').'%';
+        $p = fn ($part, $total) => $pct($total > 0 ? $part / $total * 100 : 0);
+    @endphp
+
     @if (! $current)
         <p class="muted">Belum ada data alumni untuk tahun lulus {{ $year }} pada cakupan ini.</p>
     @else
@@ -52,11 +60,11 @@
             <tr>
                 <td width="55%">
                     <table>
-                        <thead><tr><th>Responden Tracer Study</th><th>Jumlah</th></tr></thead>
+                        <thead><tr><th>Responden Tracer Study</th><th>Jumlah</th><th>%</th></tr></thead>
                         <tbody>
-                            <tr><td>Responden</td><td>{{ number_format($current['responden'], 0, ',', '.') }}</td></tr>
-                            <tr><td>Tidak Mengisi</td><td>{{ number_format($tidakMengisi, 0, ',', '.') }}</td></tr>
-                            <tr><th>Total</th><th>{{ number_format($current['jumlah_alumni'], 0, ',', '.') }}</th></tr>
+                            <tr><td>Responden</td><td>{{ $n($current['responden']) }}</td><td>{{ $p($current['responden'], $current['jumlah_alumni']) }}</td></tr>
+                            <tr><td>Tidak Mengisi</td><td>{{ $n($tidakMengisi) }}</td><td>{{ $p($tidakMengisi, $current['jumlah_alumni']) }}</td></tr>
+                            <tr><th>Total</th><th>{{ $n($current['jumlah_alumni']) }}</th><th>{{ $p($current['jumlah_alumni'], $current['jumlah_alumni']) }}</th></tr>
                         </tbody>
                     </table>
                 </td>
@@ -75,7 +83,7 @@
                         </svg>
                         <div class="legend">
                             @foreach ($respondenSlices as $slice)
-                                <span class="legend-item"><span class="legend-swatch" style="background: {{ $slice['color'] }};"></span>{{ $slice['label'] }} {{ $slice['percent'] }}%</span>
+                                <span class="legend-item"><span class="legend-swatch" style="background: {{ $slice['color'] }};"></span>{{ $slice['label'] }}: {{ $n($slice['value']) }} ({{ $pct($slice['percent']) }})</span>
                             @endforeach
                         </div>
                     @endif
@@ -84,10 +92,10 @@
         </table>
         <p class="narrative">
             Pada tahun lulus {{ $year }}, cakupan ini memiliki populasi lulusan sebesar
-            {{ number_format($current['jumlah_alumni'], 0, ',', '.') }} orang. Dari jumlah tersebut,
-            {{ number_format($current['responden'], 0, ',', '.') }} orang ({{ $responPercent }}%) telah mengisi
-            kuesioner Tracer Study, sedangkan {{ number_format($tidakMengisi, 0, ',', '.') }} orang
-            ({{ round(100 - $responPercent, 1) }}%) belum mengisi.
+            {{ $n($current['jumlah_alumni']) }} orang (100%). Dari jumlah tersebut,
+            {{ $n($current['responden']) }} orang ({{ $p($current['responden'], $current['jumlah_alumni']) }}) telah mengisi
+            kuesioner Tracer Study, sedangkan {{ $n($tidakMengisi) }} orang
+            ({{ $p($tidakMengisi, $current['jumlah_alumni']) }}) belum mengisi.
         </p>
 
         {{-- Status Lulusan --}}
@@ -112,10 +120,11 @@
                                 @foreach ($statusLabels as $key => $label)
                                     <tr>
                                         <td>{{ $label }}</td>
-                                        <td>{{ $status[$key] }}</td>
-                                        <td>{{ round($status[$key] / $statusTotal * 100, 1) }}%</td>
+                                        <td>{{ $n($status[$key]) }}</td>
+                                        <td>{{ $p($status[$key], $statusTotal) }}</td>
                                     </tr>
                                 @endforeach
+                                <tr><th>Total</th><th>{{ $n($statusTotal) }}</th><th>{{ $p($statusTotal, $statusTotal) }}</th></tr>
                             </tbody>
                         </table>
                     </td>
@@ -127,16 +136,16 @@
                         </svg>
                         <div class="legend">
                             @foreach ($statusSlices as $slice)
-                                <span class="legend-item"><span class="legend-swatch" style="background: {{ $slice['color'] }};"></span>{{ $slice['label'] }} {{ $slice['percent'] }}%</span>
+                                <span class="legend-item"><span class="legend-swatch" style="background: {{ $slice['color'] }};"></span>{{ $slice['label'] }}: {{ $n($slice['value']) }} ({{ $pct($slice['percent']) }})</span>
                             @endforeach
                         </div>
                     </td>
                 </tr>
             </table>
             <p class="narrative">
-                Dari {{ $statusTotal }} responden pada tahun lulus {{ $year }}, mayoritas berstatus
-                "{{ $statusLabels[array_search(max($status), $status)] }}" sebanyak {{ max($status) }} orang
-                ({{ round(max($status) / $statusTotal * 100, 1) }}%).
+                Dari {{ $n($statusTotal) }} responden pada tahun lulus {{ $year }}, mayoritas berstatus
+                "{{ $statusLabels[array_search(max($status), $status)] }}" sebanyak {{ $n(max($status)) }} orang
+                ({{ $p(max($status), $statusTotal) }}).
             </p>
         @else
             <p class="muted">Belum ada responden dengan status terisi untuk tahun lulus ini.</p>
@@ -159,9 +168,9 @@
                         <tr>
                             <td>{{ $i + 1 }}</td>
                             <td>{{ $row['faculty'] }}</td>
-                            <td>{{ $row['jumlah_alumni'] }}</td>
-                            <td>{{ $row['responden'] }}</td>
-                            <td>{{ $row['persentase_responden'] }}%</td>
+                            <td>{{ $n($row['jumlah_alumni']) }}</td>
+                            <td>{{ $n($row['responden']) }}</td>
+                            <td>{{ $pct($row['persentase_responden']) }}</td>
                         </tr>
                     @endforeach
                 </tbody>
@@ -169,16 +178,17 @@
             <div class="bar-chart" style="margin-top: 8px;">
                 @foreach ($facultySorted as $row)
                     <div class="bar-row">
-                        <div class="bar-label">{{ $row['faculty'] }} ({{ $row['persentase_responden'] }}%)</div>
+                        <div class="bar-label">{{ $row['faculty'] }}: {{ $n($row['responden']) }} dari {{ $n($row['jumlah_alumni']) }} lulusan ({{ $pct($row['persentase_responden']) }})</div>
                         <div class="bar-track"><div class="bar-fill" style="width: {{ max(2, round($row['persentase_responden'])) }}%;"></div></div>
                     </div>
                 @endforeach
             </div>
             <p class="narrative">
                 Tingkat partisipasi tertinggi dicapai oleh {{ $topFaculty['faculty'] }} dengan
-                {{ $topFaculty['persentase_responden'] }}% ({{ $topFaculty['responden'] }} dari
-                {{ $topFaculty['jumlah_alumni'] }} lulusan), sedangkan tingkat partisipasi terendah ada pada
-                {{ $bottomFaculty['faculty'] }} dengan {{ $bottomFaculty['persentase_responden'] }}%.
+                {{ $pct($topFaculty['persentase_responden']) }} ({{ $n($topFaculty['responden']) }} dari
+                {{ $n($topFaculty['jumlah_alumni']) }} lulusan), sedangkan tingkat partisipasi terendah ada pada
+                {{ $bottomFaculty['faculty'] }} dengan {{ $pct($bottomFaculty['persentase_responden']) }}
+                ({{ $n($bottomFaculty['responden']) }} dari {{ $n($bottomFaculty['jumlah_alumni']) }} lulusan).
             </p>
         @endif
 
@@ -193,14 +203,14 @@
             <div class="bar-chart">
                 @foreach ($masaTunggu as $label => $value)
                     <div class="bar-row">
-                        <div class="bar-label">{{ $label }} ({{ $value }})</div>
+                        <div class="bar-label">{{ $label }}: {{ $n($value) }} orang ({{ $p($value, $masaTungguTotal) }})</div>
                         <div class="bar-track"><div class="bar-fill" style="width: {{ max(2, round($value / $masaTungguMax * 100)) }}%;"></div></div>
                     </div>
                 @endforeach
             </div>
             <p class="narrative">
-                Berdasarkan {{ $masaTungguTotal }} responden yang bekerja/berwirausaha, sebanyak
-                {{ $masaTunggu['<=6 bulan'] }} orang ({{ round($masaTunggu['<=6 bulan'] / $masaTungguTotal * 100, 1) }}%)
+                Berdasarkan {{ $n($masaTungguTotal) }} responden yang bekerja/berwirausaha, sebanyak
+                {{ $n($masaTunggu['<=6 bulan']) }} orang ({{ $p($masaTunggu['<=6 bulan'], $masaTungguTotal) }})
                 mendapatkan pekerjaan/usaha pertama dalam waktu kurang dari 6 bulan sejak kelulusan. Catatan: masa
                 tunggu hanya dikumpulkan dari responden berstatus bekerja atau wiraswasta.
             </p>
@@ -219,15 +229,18 @@
             <div class="bar-chart">
                 @foreach ($pendapatan as $label => $value)
                     <div class="bar-row">
-                        <div class="bar-label">{{ $label }} ({{ $value }})</div>
+                        <div class="bar-label">{{ $label }}: {{ $n($value) }} orang ({{ $p($value, $pendapatanTotal) }})</div>
                         <div class="bar-track"><div class="bar-fill" style="width: {{ max(2, round($value / $pendapatanMax * 100)) }}%; background: #16a34a;"></div></div>
                     </div>
                 @endforeach
             </div>
             <p class="narrative">
                 Rata-rata pendapatan adalah Rp {{ number_format($breakdown['rata_rata_pendapatan'], 0, ',', '.') }}
-                per bulan, dihitung dari {{ $pendapatanTotal }} responden yang mengisi besaran pendapatannya
+                per bulan, dihitung dari {{ $n($pendapatanTotal) }} responden yang mengisi besaran pendapatannya
                 (isian kosong tidak ikut dihitung).
+                @php $pendapatanTop = array_search(max($pendapatan), $pendapatan) @endphp
+                Kelompok terbanyak berpendapatan {{ $pendapatanTop }} per bulan, yaitu {{ $n($pendapatan[$pendapatanTop]) }} orang
+                ({{ $p($pendapatan[$pendapatanTop], $pendapatanTotal) }}).
             </p>
         @else
             <p class="muted">Belum ada data pendapatan untuk tahun lulus ini.</p>
@@ -239,33 +252,47 @@
             $tempatKerja = collect($breakdown['tempat_kerja']);
             $tempatKerjaTop = $tempatKerja->take(10);
             $tempatKerjaMax = $tempatKerjaTop->max('jumlah') ?: 1;
+            $tempatKerjaTotal = $tempatKerja->sum('jumlah');
         @endphp
         @if ($tempatKerja->isNotEmpty())
             <table>
-                <thead><tr><th>No</th><th>Provinsi</th><th>Jumlah Alumni</th></tr></thead>
+                <thead><tr><th>No</th><th>Provinsi</th><th>Jumlah Alumni</th><th>%</th></tr></thead>
                 <tbody>
                     @foreach ($tempatKerjaTop as $i => $row)
                         <tr>
                             <td>{{ $i + 1 }}</td>
                             <td>{{ $row['name'] }}</td>
-                            <td>{{ $row['jumlah'] }}</td>
+                            <td>{{ $n($row['jumlah']) }}</td>
+                            <td>{{ $p($row['jumlah'], $tempatKerjaTotal) }}</td>
                         </tr>
                     @endforeach
+                    @if ($tempatKerja->count() > 10)
+                        @php $lainnya = $tempatKerja->slice(10)->sum('jumlah') @endphp
+                        <tr>
+                            <td></td>
+                            <td>{{ $tempatKerja->count() - 10 }} provinsi/wilayah lainnya</td>
+                            <td>{{ $n($lainnya) }}</td>
+                            <td>{{ $p($lainnya, $tempatKerjaTotal) }}</td>
+                        </tr>
+                    @endif
+                    <tr><th></th><th>Total</th><th>{{ $n($tempatKerjaTotal) }}</th><th>{{ $p($tempatKerjaTotal, $tempatKerjaTotal) }}</th></tr>
                 </tbody>
             </table>
             <div class="bar-chart" style="margin-top: 8px;">
                 @foreach ($tempatKerjaTop as $row)
                     <div class="bar-row">
-                        <div class="bar-label">{{ $row['name'] }} ({{ $row['jumlah'] }})</div>
+                        <div class="bar-label">{{ $row['name'] }}: {{ $n($row['jumlah']) }} orang ({{ $p($row['jumlah'], $tempatKerjaTotal) }})</div>
                         <div class="bar-track"><div class="bar-fill" style="width: {{ max(2, round($row['jumlah'] / $tempatKerjaMax * 100)) }}%; background: #7c3aed;"></div></div>
                     </div>
                 @endforeach
             </div>
             <p class="narrative">
                 Provinsi tempat kerja terbanyak bagi lulusan {{ $year }} adalah
-                {{ $tempatKerja->first()['name'] }} dengan {{ $tempatKerja->first()['jumlah'] }} orang.
+                {{ $tempatKerja->first()['name'] }} dengan {{ $n($tempatKerja->first()['jumlah']) }} orang
+                ({{ $p($tempatKerja->first()['jumlah'], $tempatKerjaTotal) }} dari {{ $n($tempatKerjaTotal) }} responden yang
+                mengisi lokasi kerja).
                 @if ($tempatKerja->count() > 10)
-                    Tabel di atas menampilkan 10 provinsi teratas dari total {{ $tempatKerja->count() }} provinsi/wilayah.
+                    Tabel di atas merinci 10 provinsi teratas dari total {{ $tempatKerja->count() }} provinsi/wilayah.
                 @endif
             </p>
         @else
@@ -283,15 +310,15 @@
             <div class="bar-chart">
                 @foreach ($f14 as $label => $value)
                     <div class="bar-row">
-                        <div class="bar-label">{{ $label }} ({{ $value }})</div>
+                        <div class="bar-label">{{ $label }}: {{ $n($value) }} orang ({{ $p($value, $f14Total) }})</div>
                         <div class="bar-track"><div class="bar-fill" style="width: {{ max(2, round($value / $f14Max * 100)) }}%;"></div></div>
                     </div>
                 @endforeach
             </div>
             @php $f14Top = array_search(max($f14), $f14) @endphp
             <p class="narrative">
-                Dari {{ $f14Total }} responden yang mengisi, {{ round($f14[$f14Top] / $f14Total * 100, 1) }}% menilai
-                pekerjaannya "{{ strtolower($f14Top) }}" dengan bidang studinya.
+                Dari {{ $n($f14Total) }} responden yang mengisi, {{ $n($f14[$f14Top]) }} orang ({{ $p($f14[$f14Top], $f14Total) }})
+                menilai pekerjaannya "{{ strtolower($f14Top) }}" dengan bidang studinya.
             </p>
         @else
             <p class="muted">Belum ada data relevansi bidang studi untuk tahun lulus ini.</p>
@@ -308,15 +335,15 @@
             <div class="bar-chart">
                 @foreach ($f15 as $label => $value)
                     <div class="bar-row">
-                        <div class="bar-label">{{ $label }} ({{ $value }})</div>
+                        <div class="bar-label">{{ $label }}: {{ $n($value) }} orang ({{ $p($value, $f15Total) }})</div>
                         <div class="bar-track"><div class="bar-fill" style="width: {{ max(2, round($value / $f15Max * 100)) }}%;"></div></div>
                     </div>
                 @endforeach
             </div>
             @php $f15Top = array_search(max($f15), $f15) @endphp
             <p class="narrative">
-                Dari {{ $f15Total }} responden yang mengisi, {{ round($f15[$f15Top] / $f15Total * 100, 1) }}% bekerja
-                pada "{{ strtolower($f15Top) }}" dengan jenjang pendidikannya.
+                Dari {{ $n($f15Total) }} responden yang mengisi, {{ $n($f15[$f15Top]) }} orang ({{ $p($f15[$f15Top], $f15Total) }})
+                bekerja pada "{{ strtolower($f15Top) }}" dengan jenjang pendidikannya.
             </p>
         @else
             <p class="muted">Belum ada data kesesuaian jenjang pendidikan untuk tahun lulus ini.</p>
@@ -333,16 +360,15 @@
             <div class="bar-chart">
                 @foreach ($jenisInstansi as $label => $value)
                     <div class="bar-row">
-                        <div class="bar-label">{{ $label }} ({{ $value }})</div>
+                        <div class="bar-label">{{ $label }}: {{ $n($value) }} orang ({{ $p($value, $jenisInstansiTotal) }})</div>
                         <div class="bar-track"><div class="bar-fill" style="width: {{ max(2, round($value / $jenisInstansiMax * 100)) }}%; background: #0891b2;"></div></div>
                     </div>
                 @endforeach
             </div>
             @php $jenisInstansiTop = array_key_first($jenisInstansi) @endphp
             <p class="narrative">
-                Dari {{ $jenisInstansiTotal }} responden bekerja yang mengisi,
-                {{ round($jenisInstansi[$jenisInstansiTop] / $jenisInstansiTotal * 100, 1) }}% bekerja di
-                {{ strtolower($jenisInstansiTop) }}.
+                Dari {{ $n($jenisInstansiTotal) }} responden bekerja yang mengisi, {{ $n($jenisInstansi[$jenisInstansiTop]) }} orang
+                ({{ $p($jenisInstansi[$jenisInstansiTop], $jenisInstansiTotal) }}) bekerja di {{ strtolower($jenisInstansiTop) }}.
             </p>
         @else
             <p class="muted">Belum ada data jenis perusahaan/instansi untuk tahun lulus ini.</p>
@@ -359,16 +385,15 @@
             <div class="bar-chart">
                 @foreach ($ruangLingkup as $label => $value)
                     <div class="bar-row">
-                        <div class="bar-label">{{ $label }} ({{ $value }})</div>
+                        <div class="bar-label">{{ $label }}: {{ $n($value) }} orang ({{ $p($value, $ruangLingkupTotal) }})</div>
                         <div class="bar-track"><div class="bar-fill" style="width: {{ max(2, round($value / $ruangLingkupMax * 100)) }}%; background: #0891b2;"></div></div>
                     </div>
                 @endforeach
             </div>
             @php $ruangLingkupTop = array_search(max($ruangLingkup), $ruangLingkup) @endphp
             <p class="narrative">
-                Dari {{ $ruangLingkupTotal }} responden yang mengisi,
-                {{ round($ruangLingkup[$ruangLingkupTop] / $ruangLingkupTotal * 100, 1) }}% bekerja di lingkup
-                {{ strtolower($ruangLingkupTop) }}.
+                Dari {{ $n($ruangLingkupTotal) }} responden yang mengisi, {{ $n($ruangLingkup[$ruangLingkupTop]) }} orang
+                ({{ $p($ruangLingkup[$ruangLingkupTop], $ruangLingkupTotal) }}) bekerja di lingkup {{ strtolower($ruangLingkupTop) }}.
             </p>
         @else
             <p class="muted">Belum ada data ruang lingkup tempat bekerja untuk tahun lulus ini.</p>
@@ -383,16 +408,17 @@
             <div class="bar-chart">
                 @foreach ($caraMencariKerja['items'] as $label => $item)
                     <div class="bar-row">
-                        <div class="bar-label">{{ $label }} ({{ $item['jumlah'] }})</div>
+                        <div class="bar-label">{{ $label }}: {{ $n($item['jumlah']) }} orang ({{ $pct($item['persen']) }})</div>
                         <div class="bar-track"><div class="bar-fill" style="width: {{ max(2, round($item['persen'])) }}%; background: #be185d;"></div></div>
                     </div>
                 @endforeach
             </div>
             @php $caraTop = array_key_first($caraMencariKerja['items']) @endphp
             <p class="narrative">
-                Basis: {{ $caraMencariKerja['basis'] }} responden berstatus bekerja/mencari kerja (boleh memilih lebih
-                dari satu cara). "{{ $caraTop }}" jadi cara paling umum, dipilih oleh
-                {{ $caraMencariKerja['items'][$caraTop]['persen'] }}% responden.
+                Basis: {{ $n($caraMencariKerja['basis']) }} responden berstatus bekerja/mencari kerja (boleh memilih lebih
+                dari satu cara, sehingga total persentase bisa melebihi 100%). "{{ $caraTop }}" jadi cara paling umum,
+                dipilih oleh {{ $n($caraMencariKerja['items'][$caraTop]['jumlah']) }} orang
+                ({{ $pct($caraMencariKerja['items'][$caraTop]['persen']) }}).
             </p>
         @else
             <p class="muted">Belum ada data cara mencari pekerjaan untuk tahun lulus ini.</p>
@@ -408,7 +434,7 @@
             <div class="bar-chart">
                 @foreach ($metode as $m)
                     <div class="bar-row">
-                        <div class="bar-label">{{ $m['label'] }} ({{ number_format($m['rata_rata'], 2, ',', '.') }})</div>
+                        <div class="bar-label">{{ $m['label'] }}: rata-rata {{ number_format($m['rata_rata'], 2, ',', '.') }} dari {{ $n($m['n']) }} responden</div>
                         <div class="bar-track"><div class="bar-fill" style="width: {{ max(2, round((5 - $m['rata_rata']) / 4 * 100)) }}%; background: #ca8a04;"></div></div>
                     </div>
                 @endforeach
@@ -416,7 +442,7 @@
             @php $metodeTop = $metode->first() @endphp
             <p class="narrative">
                 "{{ $metodeTop['label'] }}" dinilai paling ditekankan di program studi (rata-rata
-                {{ number_format($metodeTop['rata_rata'], 2, ',', '.') }} dari skala 1&ndash;5, {{ $metodeTop['n'] }} responden).
+                {{ number_format($metodeTop['rata_rata'], 2, ',', '.') }} dari skala 1&ndash;5, {{ $n($metodeTop['n']) }} responden).
             </p>
         @endif
     @endif
@@ -438,11 +464,11 @@
                 @php $row = $summary['data'][$y] @endphp
                 <tr>
                     <td>{{ $y }}</td>
-                    <td>{{ $row['jumlah_alumni'] }}</td>
-                    <td>{{ $row['responden'] }}</td>
-                    <td>{{ $row['persentase_responden'] }}%</td>
-                    <td>{{ $row['iku_berdasar_lulusan'] }}%</td>
-                    <td>Rp {{ number_format($row['rata_rata_penghasilan'], 0, ',', '.') }}</td>
+                    <td>{{ $n($row['jumlah_alumni']) }}</td>
+                    <td>{{ $n($row['responden']) }}</td>
+                    <td>{{ $pct($row['persentase_responden']) }}</td>
+                    <td>{{ $pct($row['iku_berdasar_lulusan']) }}</td>
+                    <td>Rp {{ $n($row['rata_rata_penghasilan']) }}</td>
                 </tr>
             @endforeach
         </tbody>
@@ -451,17 +477,36 @@
     <h2>Hasil Kuesioner Pengguna Alumni</h2>
     @if ($employerSummary['total']['jumlah_respon'] > 0)
         <p>
-            Indeks Kepuasan Keseluruhan: <strong>{{ $employerSummary['total']['indeks_keseluruhan'] }}%</strong>
-            (dari {{ $employerSummary['total']['jumlah_respon'] }} respon, seluruh tahun)
+            Indeks Kepuasan Keseluruhan: <strong>{{ $pct($employerSummary['total']['indeks_keseluruhan']) }}</strong>
+            (dari {{ $n($employerSummary['total']['jumlah_respon']) }} respon, seluruh tahun)
         </p>
+        @php $skala = [1 => 'Sangat Baik', 2 => 'Baik', 3 => 'Cukup', 4 => 'Kurang'] @endphp
         <table>
-            <thead><tr><th>Kompetensi</th><th>Indeks (%)</th></tr></thead>
+            <thead>
+                <tr>
+                    <th>Kompetensi</th>
+                    @foreach ($skala as $label)
+                        <th>{{ $label }}</th>
+                    @endforeach
+                    <th>Indeks</th>
+                </tr>
+            </thead>
             <tbody>
                 @foreach ($employerSummary['total']['per_pertanyaan'] as $q)
-                    <tr><td>{{ $q['label'] }}</td><td>{{ $q['indeks'] }}%</td></tr>
+                    @php $terisi = array_sum($q['distribusi']) @endphp
+                    <tr>
+                        <td>{{ $q['label'] }}</td>
+                        @foreach ($skala as $nilai => $label)
+                            <td>{{ $n($q['distribusi'][$nilai] ?? 0) }} ({{ $p($q['distribusi'][$nilai] ?? 0, $terisi) }})</td>
+                        @endforeach
+                        <td>{{ $pct($q['indeks']) }}</td>
+                    </tr>
                 @endforeach
             </tbody>
         </table>
+        <p class="muted" style="margin-top: 4px; font-size: 9px;">
+            Setiap sel: jumlah penilai (persentase dari penilai kompetensi tersebut). Indeks 100% berarti semua menilai Sangat Baik.
+        </p>
     @else
         <p class="muted">Belum ada data kuesioner Pengguna Alumni untuk cakupan ini.</p>
     @endif
