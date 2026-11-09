@@ -71,12 +71,21 @@
                         {{ number_format($alumni->total(), 0, ',', '.') }}
                     </span>
                 </div>
-                @if ($canManageAlumni)
-                    <a href="{{ route('alumni.create') }}"
-                       class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700">
-                        + Tambah Alumni
-                    </a>
-                @endif
+                <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                    @can('import-data')
+                        <a href="{{ route('alumni.import.form') }}"
+                           class="inline-flex items-center px-4 py-2 bg-white text-sm font-medium rounded-md text-blue-700"
+                           style="border: 1px solid #1d4ed8;">
+                            Impor dari Excel
+                        </a>
+                    @endcan
+                    @if ($canManageAlumni)
+                        <a href="{{ route('alumni.create') }}"
+                           class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700">
+                            + Tambah Alumni
+                        </a>
+                    @endif
+                </div>
             </div>
 
             <div class="bg-white shadow-sm rounded-lg overflow-hidden">

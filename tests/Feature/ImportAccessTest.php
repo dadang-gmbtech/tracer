@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Alumni;
+use App\Models\Faculty;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -83,5 +84,26 @@ class ImportAccessTest extends TestCase
             $this->actingAs($user)->post(route('alumni.import'))->assertForbidden();
             $this->actingAs($user)->post(route('employer.import'))->assertForbidden();
         }
+    }
+
+    public function test_the_alumni_import_is_linked_from_the_menu_and_the_alumni_list(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin Universitas');
+
+        $this->actingAs($admin)
+            ->get(route('alumni.index'))
+            ->assertOk()
+            ->assertSee('Impor Data Alumni (Excel)')
+            ->assertSee('Impor dari Excel');
+
+        $faculty = Faculty::factory()->create();
+        $adminFakultas = User::factory()->create(['faculty_id' => $faculty->id]);
+        $adminFakultas->assignRole('Admin Fakultas');
+
+        $this->actingAs($adminFakultas)
+            ->get(route('alumni.index'))
+            ->assertOk()
+            ->assertDontSee(route('alumni.import.form'));
     }
 }

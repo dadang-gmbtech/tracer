@@ -60,6 +60,7 @@
                             <x-slot name="content">
                                 @if ($canImportData)
                                     <x-dropdown-link :href="route('tracer.import.form')">Impor Data Tracer (Excel)</x-dropdown-link>
+                                    <x-dropdown-link :href="route('alumni.import.form')">Impor Data Alumni (Excel)</x-dropdown-link>
                                     <x-dropdown-link :href="route('employer.import.form')">Impor Data Pengguna Alumni (Excel)</x-dropdown-link>
                                 @endif
                                 @if ($canExport)
@@ -72,7 +73,7 @@
                         </x-dropdown>
                     @endif
 
-                    @if ($canManageUsers || $canManageMaster || $canManageQuestions || $canImportData || $canManageHomeContent)
+                    @if ($canManageUsers || $canManageMaster || $canManageQuestions || $canManageHomeContent)
                         <x-dropdown align="left" width="56">
                             <x-slot name="trigger">
                                 <button class="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-500 hover:text-gray-700 border-b-2 border-transparent">
@@ -86,9 +87,6 @@
                                 @endif
                                 @if ($isSuperAdmin)
                                     <x-dropdown-link :href="route('admin.activity-logs.index')">Log Aktivitas</x-dropdown-link>
-                                @endif
-                                @if ($canImportData)
-                                    <x-dropdown-link :href="route('alumni.import.form')">Impor Data Alumni</x-dropdown-link>
                                 @endif
                                 @if ($canManageMaster)
                                     <x-dropdown-link :href="route('admin.faculties.index')">Fakultas</x-dropdown-link>
